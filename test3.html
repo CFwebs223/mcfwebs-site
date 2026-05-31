@@ -1,0 +1,67 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Diagnostic</title>
+<style>
+* { margin:0; padding:0; box-sizing:border-box; }
+body { background:#f9f7f2; font-family:sans-serif; }
+.diag-box {
+  position:relative;
+  width:100%;
+  max-width:560px;
+  margin:100px auto 0;
+  aspect-ratio:4/3;
+  border:1px solid rgba(0,0,0,0.15);
+}
+#hero-canvas {
+  position:absolute;
+  inset:0;
+}
+#debug {
+  position:fixed;
+  bottom:0;left:0;right:0;
+  background:#111;color:#0f0;
+  font:12px/1.4 monospace;
+  padding:8px;
+  pointer-events:none;
+  z-index:999;
+}
+</style>
+</head>
+<body>
+<div class="diag-box">
+  <div id="hero-canvas"></div>
+</div>
+<div id="debug">starting...</div>
+<script>
+(function() {
+  const dbg = document.getElementById('debug');
+  const log = m => dbg.textContent = m;
+
+  const container = document.getElementById('hero-canvas');
+  const canvas = document.createElement('canvas');
+  canvas.style.cssText = 'position:absolute;inset:0;width:100%;height:100%;display:block;';
+  const ctx = canvas.getContext('2d');
+  container.appendChild(canvas);
+
+  log('created canvas');
+
+  const img = new Image();
+  img.onload = () => {
+    log('image loaded: ' + img.naturalWidth + 'x' + img.naturalHeight);
+    const rect = container.getBoundingClientRect();
+    log(rect.width + 'x' + rect.height + ' | img: ' + img.naturalWidth + 'x' + img.naturalHeight);
+    canvas.width = rect.width;
+    canvas.height = rect.height;
+    ctx.drawImage(img, 0, 0, rect.width, rect.height);
+    log('DRAWN: ' + rect.width + 'x' + rect.height);
+  };
+  img.onerror = () => { log('IMAGE LOAD ERROR'); };
+  img.src = 'images/koi-realistic.jpg';
+  log('set src: ' + img.src);
+})();
+</script>
+</body>
+</html>

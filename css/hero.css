@@ -1,0 +1,423 @@
+/* ==========================================================================
+   MCFWebs — Hover Mask Hero + Scroll Video
+   ========================================================================== */
+
+/* ==================== HOVER MASK HERO ==================== */
+.hero {
+  position: relative;
+  z-index: 2;
+  width: 100%;
+  height: 100vh;
+  height: 100dvh;
+  overflow: hidden;
+  background: #000;
+  transition: opacity 0.15s ease-out, visibility 0.15s ease-out;
+}
+
+/* Instant hide when scroll starts — tiny transition for GPU-friendly fade */
+.hero.hero-hidden {
+  opacity: 0;
+  visibility: hidden;
+  pointer-events: none;
+}
+
+.hero-images {
+  position: absolute;
+  inset: 0;
+}
+
+.hero-img {
+  position: absolute;
+  inset: -4px;
+  width: calc(100% + 8px);
+  height: calc(100% + 8px);
+  object-fit: cover;
+  pointer-events: none;
+  user-select: none;
+}
+
+/* Subtle slow zoom on back image */
+.hero-img-back {
+  animation: heroZoom 20s ease-in-out infinite alternate;
+}
+
+/* Slow drift on front image */
+.hero-img-front {
+  animation: heroDrift 25s ease-in-out infinite alternate;
+}
+
+@keyframes heroZoom {
+  0% { transform: scale(1); }
+  100% { transform: scale(1.08); }
+}
+
+@keyframes heroDrift {
+  0% { transform: translate(0, 0); }
+  33% { transform: translate(-4px, -3px); }
+  66% { transform: translate(3px, 2px); }
+  100% { transform: translate(-2px, -4px); }
+}
+
+/* Gentle light sweep overlay */
+.hero::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  background: linear-gradient(
+    120deg,
+    transparent 0%,
+    rgba(255,255,255,0.02) 30%,
+    rgba(255,255,255,0.04) 40%,
+    transparent 60%
+  );
+  background-size: 200% 100%;
+  animation: heroSweep 12s ease-in-out infinite;
+  pointer-events: none;
+}
+
+@keyframes heroSweep {
+  0% { background-position: 100% 0%; }
+  50% { background-position: 0% 0%; }
+  100% { background-position: 100% 0%; }
+}
+
+/* Canvas sits on top, renders the mask */
+#hero-mask-canvas {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+  z-index: 2;
+}
+
+/* Decorative overlay elements */
+.hero-decor {
+  position: absolute;
+  inset: 0;
+  z-index: 3;
+  pointer-events: none;
+}
+
+/* Top-left brushstroke accent */
+.hero-decor-brush {
+  position: absolute;
+  top: 8%;
+  left: 4%;
+  width: 180px;
+  height: 3px;
+  background: linear-gradient(90deg, rgba(188,0,45,0.8), transparent);
+  transform: rotate(-15deg);
+}
+
+/* Bottom-right artistic mark */
+.hero-decor-mark {
+  position: absolute;
+  bottom: 12%;
+  right: 6%;
+  width: 80px;
+  height: 80px;
+  border: 1px solid rgba(255,255,255,0.08);
+  border-radius: 50%;
+}
+
+.hero-decor-mark::after {
+  content: '';
+  position: absolute;
+  inset: 30%;
+  border: 1px solid rgba(188,0,45,0.15);
+  border-radius: 50%;
+}
+
+/* Subtle corner frames */
+.hero-decor-corner-tl,
+.hero-decor-corner-br {
+  position: absolute;
+  width: 40px;
+  height: 40px;
+  border-color: rgba(255,255,255,0.06);
+  border-style: solid;
+}
+
+.hero-decor-corner-tl {
+  top: 6%;
+  left: 5%;
+  border-width: 1px 0 0 1px;
+}
+
+.hero-decor-corner-br {
+  bottom: 6%;
+  right: 5%;
+  border-width: 0 1px 1px 0;
+}
+
+/* Text overlay — always visible */
+.hero-overlay {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  z-index: 4;
+  padding: 60px var(--margin-mobile) 80px;
+  background: linear-gradient(to top, rgba(0,0,0,0.6) 0%, transparent 60%);
+  pointer-events: none;
+}
+
+@media (min-width: 768px) {
+  .hero-overlay {
+    padding: 60px var(--margin-desktop) 100px;
+  }
+}
+
+.hero-overlay-kicker {
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.3em;
+  text-transform: uppercase;
+  color: var(--crimson);
+  margin-bottom: 8px;
+}
+
+.hero-overlay-title {
+  font-family: var(--font-display);
+  font-size: clamp(36px, 6vw, 80px);
+  font-weight: 700;
+  line-height: 1.0;
+  letter-spacing: -0.02em;
+  color: white;
+  max-width: 700px;
+}
+
+.hero-overlay-title em {
+  font-style: italic;
+  color: rgba(188,0,45,0.85);
+}
+
+.hero-overlay-sub {
+  font-size: 15px;
+  color: rgba(255,255,255,0.6);
+  max-width: 400px;
+  margin-top: 16px;
+  line-height: 1.6;
+}
+
+/* Scroll prompt */
+.hero-scroll {
+  position: absolute;
+  bottom: 32px;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 5;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  color: rgba(255,255,255,0.4);
+  font-size: 10px;
+  letter-spacing: 0.15em;
+  text-transform: uppercase;
+  font-weight: 500;
+  pointer-events: none;
+}
+
+.hero-scroll-line {
+  width: 1px;
+  height: 32px;
+  background: linear-gradient(to bottom, rgba(255,255,255,0.4), transparent);
+  animation: scrollPulse 2.5s var(--ease-out-expo) infinite;
+}
+
+@keyframes scrollPulse {
+  0%, 100% { transform: scaleY(0.3); opacity: 0.3; }
+  50% { transform: scaleY(1); opacity: 1; }
+}
+
+/* ==================== SCROLL VIDEO SECTION ==================== */
+.scroll-video {
+  position: relative;
+  width: 100%;
+  background: #000;
+  margin-top: -100vh;
+  margin-top: -100dvh;
+  z-index: 1;
+}
+
+.scroll-video-sticky {
+  position: sticky;
+  top: 0;
+  height: 100vh;
+  height: 100dvh;
+  overflow: hidden;
+  background: #000;
+}
+
+#scroll-video-el {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity 0.3s ease;
+}
+
+#scroll-video-el.visible {
+  opacity: 1;
+}
+
+.scroll-video-canvas {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  display: block;
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity 0.15s ease;
+}
+
+.scroll-video-canvas.visible {
+  opacity: 1;
+}
+
+/* Interactive text overlays */
+.scroll-video-overlay {
+  position: absolute;
+  inset: 0;
+  z-index: 3;
+  pointer-events: none;
+}
+
+.scroll-text-layer {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  padding: 60px var(--margin-mobile) 100px;
+  background: linear-gradient(to top, rgba(0,0,0,0.7) 0%, transparent 50%);
+}
+
+@media (min-width: 768px) {
+  .scroll-text-layer {
+    padding: 60px var(--margin-desktop) 120px;
+  }
+}
+
+.scroll-interactive-text {
+  max-width: 600px;
+}
+
+.scroll-text-label {
+  font-size: 11px;
+  letter-spacing: 0.25em;
+  text-transform: uppercase;
+  color: var(--crimson);
+  font-weight: 600;
+  margin-bottom: 8px;
+  opacity: 0;
+  transform: translateY(10px);
+  transition: opacity 0.6s var(--ease-out-expo), transform 0.6s var(--ease-out-expo);
+}
+
+.scroll-text-label.visible {
+  opacity: 1;
+  transform: translateY(0);
+}
+
+.scroll-text-title {
+  font-family: var(--font-display);
+  font-size: clamp(28px, 5vw, 60px);
+  font-weight: 700;
+  line-height: 1.05;
+  color: white;
+  letter-spacing: -0.02em;
+  opacity: 0;
+  transform: translateY(15px);
+  transition: opacity 0.8s var(--ease-out-expo), transform 0.8s var(--ease-out-expo);
+}
+
+.scroll-text-title.visible {
+  opacity: 1;
+  transform: translateY(0);
+}
+
+.scroll-text-desc {
+  font-size: 15px;
+  line-height: 1.6;
+  color: rgba(255,255,255,0.55);
+  max-width: 380px;
+  margin-top: 12px;
+  opacity: 0;
+  transform: translateY(10px);
+  transition: opacity 0.8s var(--ease-out-expo) 0.1s, transform 0.8s var(--ease-out-expo) 0.1s;
+}
+
+.scroll-text-desc.visible {
+  opacity: 1;
+  transform: translateY(0);
+}
+
+/* Video scroll spacer — more height = finer frame control per scroll tick */
+.scroll-video-spacer {
+  height: 400vh;
+  pointer-events: none;
+}
+
+.scroll-video-sticky {
+  will-change: transform;
+}
+
+/* Progress indicator */
+.scroll-video-progress {
+  position: absolute;
+  right: 24px;
+  top: 50%;
+  transform: translateY(-50%);
+  z-index: 4;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  pointer-events: none;
+}
+
+@media (max-width: 767px) {
+  .scroll-video-progress {
+    display: none;
+  }
+}
+
+.scroll-video-progress-track {
+  width: 1px;
+  height: 120px;
+  background: rgba(255,255,255,0.08);
+  position: relative;
+  overflow: hidden;
+}
+
+.scroll-video-progress-fill {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 0%;
+  background: var(--crimson);
+  transition: height 0.05s linear;
+}
+
+.scroll-video-progress-pct {
+  font-size: 10px;
+  letter-spacing: 0.1em;
+  color: rgba(255,255,255,0.3);
+  font-feature-settings: 'tnum';
+}
+
+/* ==================== REDUCED MOTION ==================== */
+@media (prefers-reduced-motion: reduce) {
+  #hero-mask-canvas { display: none; }
+  .scroll-video-sticky { position: relative; height: auto; }
+  .scroll-video-spacer { display: none; }
+  .scroll-video-canvas { display: none; }
+}

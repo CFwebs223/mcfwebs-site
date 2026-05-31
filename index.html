@@ -1,0 +1,430 @@
+<!DOCTYPE html>
+<html lang="en" class="scroll-smooth">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+  <title>MCFWebs — Modern Digital Craftsmanship</title>
+  <meta name="description" content="MCFWebs is a bespoke website design agency creating custom digital experiences. Editorial design, precision engineering, and museum-quality craftsmanship for modern brands.">
+  <meta name="keywords" content="custom website design, bespoke web development, digital agency, website design agency, editorial design, web craftsmanship, MCFWebs">
+  <link rel="canonical" href="https://mcfwebs.agency">
+  <meta name="theme-color" content="#f9f7f2">
+  <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+  <meta http-equiv="Pragma" content="no-cache">
+  <meta http-equiv="Expires" content="0">
+
+  <meta name="google-site-verification" content="p0PP5lUmgxbVmEV_2f29rkMW1F6bWQUDV-snCAUdUjk" />
+  <meta property="og:title" content="MCFWebs — Modern Digital Craftsmanship">
+  <meta property="og:description" content="Bespoke website design and custom digital experiences. Editorial design meets precision engineering.">
+  <meta property="og:type" content="website">
+  <meta property="og:url" content="https://mcfwebs.agency">
+  <meta property="og:site_name" content="MCFWebs">
+  <meta property="og:image" content="https://mcfwebs.agency/images/koi-realistic.jpg">
+  <meta property="og:image:width" content="1200">
+  <meta property="og:image:height" content="630">
+  <meta name="twitter:card" content="summary_large_image">
+  <meta name="twitter:title" content="MCFWebs — Modern Digital Craftsmanship">
+  <meta name="twitter:description" content="Bespoke website design and custom digital experiences.">
+
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Hanken+Grotesk:wght@400;500;600;700&family=Playfair+Display:ital,wght@0,500;0,600;0,700;1,500&display=swap" rel="stylesheet">
+
+  <link rel="preload" as="image" href="images/hero-front.jpg">
+  <link rel="preload" as="image" href="images/hero-back.jpg">
+  <link rel="preload" as="video" href="videos/scroll-koi.mp4">
+
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>⚫</text></svg>">
+  <link rel="stylesheet" href="css/style.css">
+  <link rel="stylesheet" href="css/hero.css">
+
+  <!-- Structured Data -->
+  <script type="application/ld+json">
+  {
+    "@context": "https://schema.org",
+    "@type": "Organization",
+    "name": "MCFWebs",
+    "url": "https://mcfwebs.agency",
+    "description": "Bespoke website design and custom digital experiences. Editorial design meets precision engineering.",
+    "foundingDate": "2024",
+    "contactPoint": {
+      "@type": "ContactPoint",
+      "contactType": "sales",
+      "email": "feletchristopher@gmail.com"
+    },
+    "sameAs": []
+  }
+  </script>
+</head>
+<body>
+
+  <!-- Loading Screen -->
+  <div class="loading-screen" aria-hidden="true">
+    <span class="loading-text">Loading</span>
+  </div>
+
+  <!-- Cursor Follower -->
+  <div class="cursor-follower" aria-hidden="true"></div>
+
+  <!-- Ink Trail — fixed left scroll progress -->
+  <div class="ink-trail" aria-hidden="true">
+    <svg viewBox="0 0 2 2000" preserveAspectRatio="none">
+      <path class="ink-trail-line" d="M1,0 L1,2000" />
+    </svg>
+  </div>
+
+  <!-- Mobile Navigation -->
+  <div class="mobile-nav" id="mobile-nav" role="dialog" aria-modal="true" aria-label="Mobile navigation">
+    <button class="mobile-nav-close" id="mobile-nav-close" aria-label="Close" type="button">✕</button>
+    <a href="#work" class="mobile-nav-link">Work</a>
+    <a href="#capabilities" class="mobile-nav-link">Capabilities</a>
+    <a href="#process" class="mobile-nav-link">Process</a>
+    <a href="#results" class="mobile-nav-link">Results</a>
+    <a href="#contact" class="mobile-nav-link" style="opacity:1;">Start Project</a>
+  </div>
+
+  <!-- Navigation -->
+  <nav class="nav" role="navigation" aria-label="Main navigation">
+    <a href="#" class="nav-logo">MCFWebs</a>
+    <div class="nav-links">
+      <a href="#work" class="nav-link">Work</a>
+      <a href="#capabilities" class="nav-link">Capabilities</a>
+      <a href="#process" class="nav-link">Process</a>
+      <a href="#results" class="nav-link">Results</a>
+    </div>
+    <a href="#contact" class="nav-cta">Start Project</a>
+    <button class="nav-mobile-toggle" aria-label="Menu" type="button">
+      <span></span><span></span><span></span>
+    </button>
+  </nav>
+
+  <!-- ==================== HOVER MASK HERO ==================== -->
+  <section class="hero" id="hero" aria-label="Hero">
+    <div class="hero-images">
+      <img class="hero-img hero-img-front" src="images/hero-front.jpg" alt="" aria-hidden="true">
+      <img class="hero-img hero-img-back" src="images/hero-back.jpg" alt="" aria-hidden="true">
+    </div>
+    <canvas id="hero-mask-canvas" aria-hidden="true"></canvas>
+
+    <!-- Decorative elements -->
+    <div class="hero-decor">
+      <div class="hero-decor-brush"></div>
+      <div class="hero-decor-mark"></div>
+      <div class="hero-decor-corner-tl"></div>
+      <div class="hero-decor-corner-br"></div>
+    </div>
+
+    <!-- Text overlay -->
+    <div class="hero-overlay">
+      <div class="hero-overlay-kicker">MCFWebs / Digital Craft</div>
+      <h1 class="hero-overlay-title">
+        Modern Digital<br><em>Craftsmanship</em>
+      </h1>
+      <p class="hero-overlay-sub">
+        Premium websites, digital menus, booking systems and digital products
+        for businesses ready to look sharper online.
+      </p>
+    </div>
+
+    <div class="hero-scroll" aria-hidden="true">
+      <span>Scroll</span>
+      <div class="hero-scroll-line"></div>
+    </div>
+  </section>
+
+  <!-- ==================== SCROLL VIDEO ==================== -->
+  <section class="scroll-video" id="scroll-video" aria-label="Scroll video experience">
+    <div class="scroll-video-sticky">
+      <!-- <video> element injected here by scroll-video.js -->
+
+      <!-- Side progress indicator -->
+      <div class="scroll-video-progress">
+        <div class="scroll-video-progress-track">
+          <div class="scroll-video-progress-fill"></div>
+        </div>
+        <span class="scroll-video-progress-pct">0%</span>
+      </div>
+
+      <!-- Interactive text overlays -->
+      <div class="scroll-video-overlay">
+        <div class="scroll-text-layer">
+          <div class="scroll-interactive-text">
+            <div class="scroll-text-label">The Beginning</div>
+            <h2 class="scroll-text-title">A Single<br>Stroke</h2>
+            <p class="scroll-text-desc">Every creation begins as a moment of intention — ink meeting paper.</p>
+          </div>
+        </div>
+      </div>
+    </div>
+    <!-- Spacer to enable scrolling -->
+    <div class="scroll-video-spacer"></div>
+  </section>
+
+  <!-- ==================== FEATURED WORK ==================== -->
+  <section class="section-work container" id="work" aria-label="Featured Work">
+    <div class="work-intro">
+      <div>
+        <div class="work-intro-label section-label label-caps reveal">Selected Projects</div>
+        <h2 class="display-md reveal reveal-delay-1">
+          Work that<br>
+          <span style="font-style: italic; font-weight: 500;">commands attention</span>
+        </h2>
+      </div>
+      <div>
+        <p class="work-intro-text body-lg reveal reveal-delay-2" style="color: var(--ink-light);">
+          Every project is a study in restraint. We let the work speak through
+          intentional composition, precise typography, and purposeful motion.
+        </p>
+      </div>
+    </div>
+
+    <!-- Project 1 -->
+    <article class="project-spread reveal">
+      <div class="project-bg project-bg-1">
+        <span class="project-bg-text">Kinship</span>
+      </div>
+      <div class="project-content">
+        <span class="project-number label-caps">01 / Architecture</span>
+        <h3 class="project-title headline-lg">The Kinship Study</h3>
+        <div class="project-meta">
+          <span class="label-caps">UI/UX Design</span>
+          <span class="label-caps">Frontend Engineering</span>
+          <span class="label-caps">Motion Design</span>
+        </div>
+        <p class="project-desc body-md">
+          A digital archive for sustainable materials, prioritizing tactile response
+          and visual purity through restrained motion and intentional negative space.
+        </p>
+        <a href="#" class="project-cta" aria-label="View The Kinship Study">
+          <span>View Project</span>
+          <span class="project-cta-arrow" aria-hidden="true">→</span>
+        </a>
+      </div>
+      <div class="project-accent" aria-hidden="true"></div>
+    </article>
+
+    <!-- Project 2 -->
+    <article class="project-spread reveal reveal-delay-1">
+      <div class="project-bg project-bg-2">
+        <span class="project-bg-text">Chronos</span>
+      </div>
+      <div class="project-content">
+        <span class="project-number label-caps">02 / Interactive</span>
+        <h3 class="project-title headline-lg">Chronos Digital</h3>
+        <div class="project-meta">
+          <span class="label-caps">3D Development</span>
+          <span class="label-caps">WebGL</span>
+          <span class="label-caps">Brand Identity</span>
+        </div>
+        <p class="project-desc body-md">
+          Experimental 3D navigation and storytelling for an avant-garde watchmaker,
+          blending mechanical precision with digital artistry.
+        </p>
+        <a href="#" class="project-cta" aria-label="View Chronos Digital">
+          <span>View Project</span>
+          <span class="project-cta-arrow" aria-hidden="true">→</span>
+        </a>
+      </div>
+      <div class="project-accent" aria-hidden="true"></div>
+    </article>
+  </section>
+
+  <!-- ==================== CAPABILITIES ==================== -->
+  <section class="section" id="capabilities" aria-label="Capabilities">
+    <div class="container capabilities-grid">
+      <div>
+        <div class="section-label label-caps reveal">Capabilities</div>
+        <h2 class="capabilities-title display-md reveal reveal-delay-1">
+          Precision in<br>
+          <span style="font-style: italic; font-weight: 500;">every dimension</span>
+        </h2>
+        <p class="capabilities-body body-lg reveal reveal-delay-2">
+          We translate complex vision into precise digital form through disciplined
+          craft and technical mastery.
+        </p>
+      </div>
+
+      <div class="capabilities-list">
+        <div class="capability-item reveal-left reveal-delay-1">
+          <span class="capability-index">01</span>
+          <span class="capability-name">Custom Websites</span>
+          <span class="capability-arrow">→</span>
+        </div>
+        <div class="capability-item reveal-left reveal-delay-2">
+          <span class="capability-index">02</span>
+          <span class="capability-name">3D Experiences</span>
+          <span class="capability-arrow">→</span>
+        </div>
+        <div class="capability-item reveal-left reveal-delay-3">
+          <span class="capability-index">03</span>
+          <span class="capability-name">Interactive Development</span>
+          <span class="capability-arrow">→</span>
+        </div>
+        <div class="capability-item reveal-left reveal-delay-4">
+          <span class="capability-index">04</span>
+          <span class="capability-name">Design Systems</span>
+          <span class="capability-arrow">→</span>
+        </div>
+        <div class="capability-item reveal-left">
+          <span class="capability-index">05</span>
+          <span class="capability-name">Brand Experiences</span>
+          <span class="capability-arrow">→</span>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ==================== PROCESS (S-curve) ==================== -->
+  <section class="section section-dim" id="process" aria-label="Our Process">
+    <div class="container">
+      <div style="text-align: center; margin-bottom: 80px;">
+        <div class="section-label label-caps reveal" style="justify-content: center;">The Method</div>
+        <h2 class="display-md reveal reveal-delay-1">
+          How we<br>
+          <span style="font-style: italic; font-weight: 500;">create</span>
+        </h2>
+      </div>
+
+      <div class="process-container">
+        <!-- SVG S-curve connecting path -->
+        <svg class="process-svg" viewBox="0 0 1200 600" preserveAspectRatio="none">
+          <path class="process-path" d="M600,20 C200,20 200,150 600,150 C1000,150 1000,280 600,280 C200,280 200,410 600,410 C1000,410 1000,540 600,540" />
+          <path class="process-path-progress" d="M600,20 C200,20 200,150 600,150 C1000,150 1000,280 600,280 C200,280 200,410 600,410 C1000,410 1000,540 600,540" />
+        </svg>
+
+        <div class="process-steps">
+          <!-- Step 1 -->
+          <div class="process-step">
+            <div class="process-marker">
+              <div class="process-dot"></div>
+              <span class="process-number label-caps">01 / Discovery</span>
+            </div>
+            <div class="process-content">
+              <h4 class="process-title headline-md">Deep Inquiry</h4>
+              <p class="process-desc body-md">
+                Uncovering the core essence and strategic objectives of your brand
+                narrative through immersive research.
+              </p>
+            </div>
+          </div>
+
+          <!-- Step 2 -->
+          <div class="process-step">
+            <div class="process-marker">
+              <div class="process-dot"></div>
+              <span class="process-number label-caps">02 / Craft</span>
+            </div>
+            <div class="process-content">
+              <h4 class="process-title headline-md">Artful Logic</h4>
+              <p class="process-desc body-md">
+                Where aesthetic purity meets rigorous structural engineering.
+                Every pixel serves a purpose.
+              </p>
+            </div>
+          </div>
+
+          <!-- Step 3 -->
+          <div class="process-step">
+            <div class="process-marker">
+              <div class="process-dot"></div>
+              <span class="process-number label-caps">03 / Refine</span>
+            </div>
+            <div class="process-content">
+              <h4 class="process-title headline-md">The Polish</h4>
+              <p class="process-desc body-md">
+                Obsessive attention to micro-interactions, motion quality, and
+                performance optimization at every breakpoint.
+              </p>
+            </div>
+          </div>
+
+          <!-- Step 4 -->
+          <div class="process-step">
+            <div class="process-marker">
+              <div class="process-dot"></div>
+              <span class="process-number label-caps">04 / Launch</span>
+            </div>
+            <div class="process-content">
+              <h4 class="process-title headline-md">Execution</h4>
+              <p class="process-desc body-md">
+                Deploying a world-class digital experience to the global stage
+                with ongoing refinement and support.
+              </p>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ==================== RESULTS ==================== -->
+  <section class="section" id="results" aria-label="Results & Testimonials">
+    <div class="container">
+      <div style="margin-bottom: 60px;">
+        <div class="section-label label-caps reveal">Results</div>
+        <h2 class="display-md reveal reveal-delay-1">
+          Measured in<br>
+          <span style="font-style: italic; font-weight: 500;">impact</span>
+        </h2>
+      </div>
+
+      <div class="results-grid reveal">
+        <div class="result-item">
+          <span class="result-value display-lg" data-count-to="300" data-count-suffix="%" data-count-duration="2000">0%</span>
+          <p class="result-label label-caps">Growth in Engagement</p>
+        </div>
+        <div class="result-item">
+          <span class="result-value display-lg" data-count-to="40" data-count-suffix="ms" data-count-duration="1500">0ms</span>
+          <p class="result-label label-caps">Average Response Latency</p>
+        </div>
+        <div class="result-item">
+          <span class="result-value display-lg" data-count-to="12" data-count-suffix="+" data-count-duration="1000">0+</span>
+          <p class="result-label label-caps">International Awards</p>
+        </div>
+      </div>
+
+      <div class="testimonial reveal">
+        <blockquote class="testimonial-text headline-lg">
+          "MCFWebs doesn't just build sites; they construct digital galleries.
+          Their obsession with space and typography changed how our brand is
+          perceived globally."
+        </blockquote>
+        <div class="testimonial-author">
+          <div class="testimonial-line" aria-hidden="true"></div>
+          <span class="label-caps" style="color: var(--ink-light);">
+            Sato Ishiguro, Creative Director
+          </span>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ==================== FINAL CTA ==================== -->
+  <section class="cta-section container" id="contact" aria-label="Get in touch">
+    <h2 class="cta-title display-xl reveal">
+      Let's Create<br>
+      <span class="cta-em">Something Unforgettable</span>
+    </h2>
+    <div class="reveal reveal-delay-1">
+      <a href="#" class="cta-button"><span>Start Your Project</span></a>
+    </div>
+  </section>
+
+  <!-- ==================== FOOTER ==================== -->
+  <footer class="footer container" role="contentinfo">
+    <div class="footer-logo">MCFWebs</div>
+    <div class="footer-links">
+      <a href="#" class="footer-link">Instagram</a>
+      <a href="#" class="footer-link">LinkedIn</a>
+      <a href="#" class="footer-link">Studio</a>
+    </div>
+    <div class="footer-copy">
+      &copy; <span id="copyright-year">2024</span> MCFWebs. Precision in Craft.
+    </div>
+  </footer>
+
+  <script src="js/hero-mask.js"></script>
+  <script src="js/scroll-video.js"></script>
+  <script src="js/scroll.js"></script>
+  <script src="js/app.js"></script>
+</body>
+</html>
