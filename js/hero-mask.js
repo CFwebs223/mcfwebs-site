@@ -2,6 +2,7 @@
    HoverMaskHero — Full-screen video + mask reveal
    Canvas composites two videos: front (base) + back (reveal via circle mask).
    Desktop: images (unchanged). Mobile: videos + gyro + tap + auto-ripple.
+   Video loop crossfades through black. Tap freezes gyro for clean animation.
    ========================================================================== */
 
 class HoverMaskHero {
@@ -12,8 +13,6 @@ class HoverMaskHero {
 
     this.ctx = this.canvas.getContext('2d', { alpha: false });
     this.isMobile = window.innerWidth < 768;
-
-    // Desktop uses images, mobile uses videos
     this.useVideo = this.isMobile;
 
     this.mx = -999;
@@ -29,7 +28,13 @@ class HoverMaskHero {
     this.ready = false;
     this.paused = false;
 
-    // Mobile: smaller mask for tilt, slightly larger for tap
+    // Video loop crossfade
+    this.videoOpacity = 1;
+    this.videoFading = false;
+
+    // Tap freezes gyro
+    this.gyroFrozen = false;
+
     this.tiltRadius = 80;
     this.tapRadius = 130;
 
@@ -79,20 +84,15 @@ class HoverMaskHero {
     let frontReady = false;
     let backReady = false;
 
-    // Use mobile poster images as canvas background until videos are ready
     this.fallbackFront = document.querySelector('.hero-img-front-mobile');
     this.fallbackBack = document.querySelector('.hero-img-back-mobile');
 
-    // Fire setup early so canvas starts drawing fallback images
     setTimeout(() => {
-      if (!this.ready) {
-        this._setup(); // Start the loop with fallback images
-      }
+      if (!this.ready) this._setup();
     }, 100);
 
     const bothReady = () => {
       if (!frontReady || !backReady) return;
-
       this.ready = true;
       this.frontVideo.play().catch(() => {});
       this.backVideo.play().catch(() => {});
@@ -101,11 +101,9 @@ class HoverMaskHero {
 
     this.frontVideo.addEventListener('canplay', () => { frontReady = true; bothReady(); }, { once: true });
     this.backVideo.addEventListener('canplay', () => { backReady = true; bothReady(); }, { once: true });
-
     this.frontVideo.load();
     this.backVideo.load();
 
-    // Safety timeout: if videos take >5s, fall back to mobile images
     setTimeout(() => {
       if (!this.ready) {
         this.useVideo = false;
@@ -119,15 +117,12 @@ class HoverMaskHero {
   _setup() {
     this._size();
     this._drawStatic();
-
     this.container.addEventListener('mousemove', this._boundMove, { passive: true });
     this.container.addEventListener('mouseenter', this._boundEnter, { passive: true });
     this.container.addEventListener('mouseleave', this._boundLeave, { passive: true });
-
     if (this.useVideo) {
       this.container.addEventListener('touchstart', this._boundTouch, { passive: true });
     }
-
     this._loop();
   }
 
@@ -169,8 +164,6 @@ class HoverMaskHero {
   _dismissOverlay(overlay) {
     overlay.classList.add('gyro-fade-out');
     setTimeout(() => { if (overlay.parentNode) overlay.parentNode.removeChild(overlay); }, 500);
-
-    // Also start playing front/back videos after overlay dismissed
     if (this.frontVideo) this.frontVideo.play().catch(() => {});
     if (this.backVideo) this.backVideo.play().catch(() => {});
   }
@@ -178,7 +171,6 @@ class HoverMaskHero {
   _requestGyro() {
     if (this.gyroActive) return;
     this.gyroActive = true;
-
     this.gammaRef = 0;
     this.betaRef = 0;
     this.gyroCalibrated = false;
@@ -187,6 +179,8 @@ class HoverMaskHero {
 
     this.gyroHandler = (e) => {
       if (e.gamma === null || e.beta === null) return;
+      // When gyro is frozen (after tap), ignore tilt
+      if (this.gyroFrozen) return;
       if (!this.gyroCalibrated) {
         this.gammaRef = e.gamma;
         this.betaRef = e.beta;
@@ -199,8 +193,6 @@ class HoverMaskHero {
       const cy = rect.height / 2 + beta * 10;
       this.mx = Math.max(0, Math.min(rect.width, cx));
       this.my = Math.max(0, Math.min(rect.height, cy));
-
-      // Every tilt resets the 1.5s dismiss timer
       this._resetDismiss();
     };
 
@@ -219,7 +211,6 @@ class HoverMaskHero {
     this._scheduleDismiss();
   }
 
-  /* ---- Mask activation ---- */
   _activateMask(radius) {
     this.active = true;
     this.targetRadius = radius;
@@ -230,9 +221,7 @@ class HoverMaskHero {
   /* ---- Ripple dismiss after 1.5s ---- */
   _scheduleDismiss() {
     if (this.dismissTimer) clearTimeout(this.dismissTimer);
-    this.dismissTimer = setTimeout(() => {
-      this._rippleDismiss();
-    }, 1500);
+    this.dismissTimer = setTimeout(() => { this._rippleDismiss(); }, 1500);
   }
 
   _rippleDismiss() {
@@ -255,6 +244,8 @@ class HoverMaskHero {
         this.active = false;
         this.targetRadius = 0;
         this.rippleAnim = null;
+        // After ripple completes, unfreeze gyro
+        this.gyroFrozen = false;
       }
     };
     this.rippleAnim = requestAnimationFrame(animate);
@@ -268,6 +259,9 @@ class HoverMaskHero {
     const rect = this.container.getBoundingClientRect();
     this.mx = touch.clientX - rect.left;
     this.my = touch.clientY - rect.top;
+
+    // Freeze gyro so mask stays at tap position for clean animation
+    this.gyroFrozen = true;
     this._activateMask(this.tapRadius);
     this._scheduleDismiss();
   }
@@ -292,7 +286,6 @@ class HoverMaskHero {
     this.targetRadius = 0;
   }
 
-  /* ---- Sizing ---- */
   _size() {
     const w = this.container.clientWidth;
     const h = this.container.clientHeight;
@@ -345,11 +338,29 @@ class HoverMaskHero {
     if (this.paused || !this.ready) return;
     if (this.container.getBoundingClientRect().bottom < 0) return;
 
-    // Smooth lerp position
+    // ---- Video loop crossfade through black ----
+    if (this.useVideo && this.frontVideo && this.backVideo) {
+      const dur = this.frontVideo.duration;
+      const ct = this.frontVideo.currentTime;
+      const fadeDuration = 0.4; // seconds
+
+      if (dur > 0 && ct > dur - fadeDuration) {
+        // Fade OUT to black (last 0.4s of loop)
+        this.videoOpacity = Math.max(0, (dur - ct) / fadeDuration);
+        this.videoFading = true;
+      } else if (ct < fadeDuration && this.videoFading) {
+        // Fade IN from black (first 0.4s of new loop)
+        this.videoOpacity = Math.min(1, ct / fadeDuration);
+      } else if (ct >= fadeDuration) {
+        this.videoOpacity = 1;
+        this.videoFading = false;
+      }
+    }
+
+    // Smooth lerp
     this.cx += (this.mx - this.cx) * 0.18;
     this.cy += (this.my - this.cy) * 0.18;
 
-    // Smooth radius lerp (only lerp up; ripple controls the down)
     if (this.active && this.radius < this.targetRadius) {
       this.radius += (this.targetRadius - this.radius) * 0.15;
     }
@@ -365,17 +376,32 @@ class HoverMaskHero {
 
     ctx.clearRect(0, 0, this.cw, this.ch);
 
-    // Front layer (always visible) — fallbacks gracefully from video → mobile img → desktop img
-    ctx.drawImage(this._getFrontSource(), 0, 0, this.cw, this.ch);
+    // Front layer with video opacity (for loop crossfade)
+    if (this.useVideo && this.videoOpacity < 1) {
+      // Composite front video at reduced opacity over black
+      ctx.fillStyle = '#000';
+      ctx.fillRect(0, 0, this.cw, this.ch);
+      ctx.globalAlpha = this.videoOpacity;
+      ctx.drawImage(this._getFrontSource(), 0, 0, this.cw, this.ch);
+      ctx.globalAlpha = 1;
+    } else {
+      ctx.drawImage(this._getFrontSource(), 0, 0, this.cw, this.ch);
+    }
 
-    // Back layer through circle mask
+    // Back layer through circle mask (same opacity treatment)
     if (r > 1) {
       ctx.save();
       ctx.beginPath();
       ctx.arc(this.cx, this.cy, r, 0, Math.PI * 2);
       ctx.clip();
 
-      ctx.drawImage(this._getBackSource(), 0, 0, this.cw, this.ch);
+      if (this.useVideo && this.videoOpacity < 1) {
+        ctx.globalAlpha = this.videoOpacity;
+        ctx.drawImage(this._getBackSource(), 0, 0, this.cw, this.ch);
+        ctx.globalAlpha = 1;
+      } else {
+        ctx.drawImage(this._getBackSource(), 0, 0, this.cw, this.ch);
+      }
 
       ctx.strokeStyle = 'rgba(255,255,255,0.12)';
       ctx.lineWidth = 1.5;
