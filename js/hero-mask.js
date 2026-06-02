@@ -2,6 +2,7 @@
    HoverMaskHero — Full-screen image with circular mask reveal on hover
    Canvas-based for performance. Stops completely on scroll.
    Mobile uses 9:16 ratio images, desktop uses 16:9.
+   With fullscreen gyro overlay for permission + ripple dismiss.
    ========================================================================== */
 
 class HoverMaskHero {
@@ -26,15 +27,17 @@ class HoverMaskHero {
     this.minRadius = 60;
     this.loaded = 0;
     this.ready = false;
-    this.paused = false; // true when scroll hides hero
+    this.paused = false;
+    this.gyroActive = false;
+    this.dismissTimer = null;
 
     this._boundMove = (e) => this._onMove(e);
     this._boundEnter = () => this._onEnter();
     this._boundLeave = () => this._onLeave();
+    this._boundTouch = (e) => this._onTouch(e);
 
-    // Mobile: use gyroscope for tilt-based mask position
     if (this.isMobile) {
-      this._initGyro();
+      this._createGyroOverlay();
     }
 
     this._loadImages();
@@ -53,12 +56,64 @@ class HoverMaskHero {
     if (this.backImg && this.backImg.complete) check(); else if (this.backImg) this.backImg.onload = check;
   }
 
-  _initGyro() {
+  /* ----- Gyro overlay (fullscreen, forces tap) ----- */
+  _createGyroOverlay() {
+    const overlay = document.createElement('div');
+    overlay.id = 'gyro-overlay';
+    overlay.innerHTML = `
+      <div class="gyro-overlay-bg"></div>
+      <div class="gyro-overlay-content">
+        <div class="gyro-icon">
+          <svg width="48" height="48" viewBox="0 0 48 48" fill="none">
+            <circle cx="24" cy="24" r="20" stroke="rgba(255,255,255,0.3)" stroke-width="1"/>
+            <circle cx="24" cy="24" r="6" fill="rgba(188,0,45,0.8)"/>
+            <line x1="24" y1="4" x2="24" y2="14" stroke="rgba(255,255,255,0.4)" stroke-width="1.5" stroke-dasharray="2 2"/>
+            <line x1="44" y1="24" x2="34" y2="24" stroke="rgba(255,255,255,0.4)" stroke-width="1.5" stroke-dasharray="2 2"/>
+            <line x1="24" y1="44" x2="24" y2="34" stroke="rgba(255,255,255,0.4)" stroke-width="1.5" stroke-dasharray="2 2"/>
+            <line x1="4" y1="24" x2="14" y2="24" stroke="rgba(255,255,255,0.4)" stroke-width="1.5" stroke-dasharray="2 2"/>
+          </svg>
+        </div>
+        <p class="gyro-title">Tilt to Reveal</p>
+        <p class="gyro-sub">Tap anywhere to activate<br>phone tilt control</p>
+        <button class="gyro-btn" id="gyro-activate-btn">ACTIVATE TILT</button>
+      </div>
+    `;
+    document.body.appendChild(overlay);
+
+    // Activate on button click or overlay tap
+    const activate = () => {
+      this._requestGyroPermission();
+      this._dismissOverlay(overlay);
+    };
+
+    const btn = document.getElementById('gyro-activate-btn');
+    if (btn) btn.addEventListener('click', activate, { once: true });
+    overlay.addEventListener('click', (e) => {
+      if (e.target === overlay || e.target.closest('.gyro-overlay-content')) {
+        if (!this.gyroActive) activate();
+      }
+    }, { once: true });
+
+    // Prevent hero scroll from triggering while overlay is shown
+    overlay.addEventListener('touchmove', (e) => e.preventDefault(), { passive: false });
+  }
+
+  _dismissOverlay(overlay) {
+    overlay.classList.add('gyro-fade-out');
+    setTimeout(() => {
+      if (overlay.parentNode) overlay.parentNode.removeChild(overlay);
+    }, 500);
+  }
+
+  _requestGyroPermission() {
+    if (this.gyroActive) return;
+    this.gyroActive = true;
+
     this.gammaRef = 0;
     this.betaRef = 0;
     this.gyroCalibrated = false;
 
-    // On mobile, activate the mask immediately
+    // Activate mask
     this.active = true;
     this.targetRadius = this.maxRadius;
 
@@ -72,55 +127,75 @@ class HoverMaskHero {
       const gamma = e.gamma - this.gammaRef;
       const beta = e.beta - this.betaRef;
       const rect = this.container.getBoundingClientRect();
-      const sensitivity = 8;
-      const cx = rect.width / 2 + gamma * sensitivity;
-      const cy = rect.height / 2 + beta * sensitivity;
+      const cx = rect.width / 2 + gamma * 8;
+      const cy = rect.height / 2 + beta * 8;
       this.mx = Math.max(0, Math.min(rect.width, cx));
       this.my = Math.max(0, Math.min(rect.height, cy));
+
+      // Reset dismiss timer on tilt
+      this._resetDismissTimer();
     };
 
-    // Show tap hint, then request permission on any touch
-    this._showGyroHint();
-
-    const attachHandler = () => {
+    // iOS 13+
+    if (typeof DeviceOrientationEvent !== 'undefined' && typeof DeviceOrientationEvent.requestPermission === 'function') {
+      DeviceOrientationEvent.requestPermission().then((state) => {
+        if (state === 'granted') {
+          window.addEventListener('deviceorientation', this.gyroHandler, { passive: true });
+        }
+      }).catch(() => {});
+    } else {
       window.addEventListener('deviceorientation', this.gyroHandler, { passive: true });
-    };
-
-    // Try to attach on first touch, regardless of platform
-    const onFirstTouch = () => {
-      document.removeEventListener('touchstart', onFirstTouch);
-
-      // iOS 13+ needs explicit permission API
-      if (typeof DeviceOrientationEvent !== 'undefined' && typeof DeviceOrientationEvent.requestPermission === 'function') {
-        DeviceOrientationEvent.requestPermission().then((state) => {
-          if (state === 'granted') attachHandler();
-        }).catch(() => {
-          // Fallback: just try anyway
-          attachHandler();
-        });
-      } else {
-        // Android / others: try directly (will work if permission is granted by browser)
-        attachHandler();
-      }
-    };
-
-    document.addEventListener('touchstart', onFirstTouch, { once: true, passive: true });
+    }
   }
 
-  _showGyroHint() {
-    const hint = document.createElement('div');
-    hint.id = 'gyro-hint';
-    hint.textContent = 'Tap to activate tilt';
-    hint.style.cssText = 'position:fixed;bottom:120px;left:50%;transform:translateX(-50%);z-index:50;background:rgba(0,0,0,0.75);color:white;padding:10px 20px;border-radius:4px;font-size:12px;letter-spacing:0.1em;font-family:"Hanken Grotesk",sans-serif;opacity:1;transition:opacity 0.6s;pointer-events:none;';
-    document.body.appendChild(hint);
+  /* ----- Ripple dismiss 0.7s after last action ----- */
+  _resetDismissTimer() {
+    if (this.dismissTimer) clearTimeout(this.dismissTimer);
+    this.dismissTimer = setTimeout(() => {
+      this._rippleDismiss();
+    }, 700);
+  }
 
-    // Remove hint on first touch
-    const remove = () => {
-      hint.style.opacity = '0';
-      setTimeout(() => { if (hint.parentNode) hint.parentNode.removeChild(hint); }, 600);
-      document.removeEventListener('touchstart', remove);
+  _rippleDismiss() {
+    // Save current mask position for the ripple
+    const sx = this.cx;
+    const sy = this.cy;
+    const startRadius = this.radius;
+
+    // Animate radius shrinking to 0 with ease-out
+    const duration = 400;
+    const start = performance.now();
+    const animate = (now) => {
+      const t = Math.min((now - start) / duration, 1);
+      // Ease-out cubic
+      const ease = 1 - Math.pow(1 - t, 3);
+      this.radius = startRadius * (1 - ease);
+      // Keep position fixed during ripple
+      this.cx = sx;
+      this.cy = sy;
+      if (t < 1) {
+        requestAnimationFrame(animate);
+      } else {
+        this.radius = 0;
+        this.active = false;
+        this.targetRadius = 0;
+      }
     };
-    document.addEventListener('touchstart', remove, { once: true, passive: true });
+    requestAnimationFrame(animate);
+  }
+
+  /* ----- Touch events (also trigger dismiss) ----- */
+  _onTouch(e) {
+    if (this.paused || !this.gyroActive) return;
+    const touch = e.touches[0];
+    if (!touch) return;
+    const rect = this.container.getBoundingClientRect();
+    this.mx = touch.clientX - rect.left;
+    this.my = touch.clientY - rect.top;
+    // Show mask at touch position
+    this.active = true;
+    this.targetRadius = this.maxRadius;
+    this._resetDismissTimer();
   }
 
   _setup() {
@@ -130,6 +205,10 @@ class HoverMaskHero {
     this.container.addEventListener('mousemove', this._boundMove, { passive: true });
     this.container.addEventListener('mouseenter', this._boundEnter, { passive: true });
     this.container.addEventListener('mouseleave', this._boundLeave, { passive: true });
+
+    if (this.isMobile) {
+      this.container.addEventListener('touchstart', this._boundTouch, { passive: true });
+    }
 
     this._loop();
   }
@@ -145,7 +224,6 @@ class HoverMaskHero {
 
   resize() {
     if (!this.ready || this.paused) return;
-    // Check if mobile/desktop changed
     const wasMobile = this.isMobile;
     this.isMobile = window.innerWidth < 768;
     if (wasMobile !== this.isMobile) {
@@ -156,13 +234,11 @@ class HoverMaskHero {
     this._drawStatic();
   }
 
-  // Pause mask (scroll active)
   pause() {
     this.paused = true;
     this.active = false;
   }
 
-  // Resume mask (back at top)
   resume() {
     if (!this.ready) return;
     this.paused = false;
@@ -191,7 +267,6 @@ class HoverMaskHero {
 
   _onLeave() {
     if (this.paused) return;
-    // On mobile the gyroscope keeps it active
     if (this.isMobile) return;
     this.active = false;
     this.targetRadius = 0;
@@ -205,7 +280,13 @@ class HoverMaskHero {
 
     this.cx += (this.mx - this.cx) * 0.15;
     this.cy += (this.my - this.cy) * 0.15;
-    this.radius += (this.targetRadius - this.radius) * 0.12;
+
+    // For mobile: radius is controlled by ripple, not lerp (only lerp up)
+    if (!this.isMobile) {
+      this.radius += (this.targetRadius - this.radius) * 0.12;
+    } else if (this.active && this.radius < this.targetRadius) {
+      this.radius += (this.targetRadius - this.radius) * 0.15;
+    }
 
     if (Math.abs(this.radius) < 0.5 && !this.active) return;
 
@@ -243,5 +324,6 @@ class HoverMaskHero {
     this.container.removeEventListener('mousemove', this._boundMove);
     this.container.removeEventListener('mouseenter', this._boundEnter);
     this.container.removeEventListener('mouseleave', this._boundLeave);
+    this.container.removeEventListener('touchstart', this._boundTouch);
   }
 }
