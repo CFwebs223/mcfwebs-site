@@ -1,0 +1,342 @@
+/* ==========================================================================
+   MCFWebs — Pricing Page
+   ========================================================================== */
+
+.pricing-hero {
+  min-height: 60vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  padding: 120px var(--margin-mobile) 60px;
+  background: linear-gradient(180deg, var(--paper) 0%, var(--paper-dim) 100%);
+}
+
+@media (min-width: 768px) {
+  .pricing-hero {
+    padding: 160px var(--margin-desktop) 80px;
+  }
+}
+
+.pricing-hero-kicker {
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.3em;
+  text-transform: uppercase;
+  color: var(--crimson);
+  margin-bottom: 16px;
+}
+
+.pricing-hero-title {
+  max-width: 700px;
+  margin: 0 auto 16px;
+}
+
+.pricing-hero-sub {
+  color: var(--ink-light);
+  max-width: 500px;
+  margin: 0 auto;
+}
+
+/* ---- Pricing Cards ---- */
+.pricing-grid {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 24px;
+  padding: 0 var(--margin-mobile) var(--section-gap);
+  max-width: 1100px;
+  margin: 0 auto;
+}
+
+@media (min-width: 768px) {
+  .pricing-grid {
+    grid-template-columns: repeat(3, 1fr);
+    gap: 32px;
+    padding: 0 var(--margin-desktop) var(--section-gap);
+  }
+}
+
+.pricing-card {
+  background: var(--paper-bright);
+  border: 0.5px solid var(--border);
+  padding: 48px 32px;
+  display: flex;
+  flex-direction: column;
+  position: relative;
+  transition: all 0.5s var(--ease-out-expo);
+}
+
+.pricing-card:hover {
+  border-color: var(--crimson-fade);
+  box-shadow: 0 20px 60px rgba(188, 0, 45, 0.06);
+}
+
+.pricing-card.featured {
+  border-color: var(--crimson);
+  border-width: 1px;
+  box-shadow: 0 4px 40px rgba(188, 0, 45, 0.08);
+}
+
+.pricing-card-badge {
+  position: absolute;
+  top: -12px;
+  left: 50%;
+  transform: translateX(-50%);
+  background: var(--crimson);
+  color: white;
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.15em;
+  text-transform: uppercase;
+  padding: 6px 20px;
+}
+
+.pricing-card-icon {
+  font-size: 28px;
+  margin-bottom: 16px;
+  letter-spacing: 0;
+}
+
+.pricing-card-name {
+  font-family: var(--font-display);
+  font-size: 22px;
+  font-weight: 600;
+  margin-bottom: 4px;
+  line-height: 1.3;
+}
+
+.pricing-card-desc {
+  font-size: 14px;
+  color: var(--ink-light);
+  margin-bottom: 24px;
+  line-height: 1.6;
+}
+
+.pricing-card-price {
+  font-family: var(--font-display);
+  font-size: 48px;
+  font-weight: 700;
+  letter-spacing: -0.03em;
+  line-height: 1;
+  margin-bottom: 4px;
+  color: var(--crimson);
+}
+
+.pricing-card-price-sub {
+  font-size: 13px;
+  color: var(--ink-light);
+  margin-bottom: 24px;
+}
+
+.pricing-card-features {
+  list-style: none;
+  padding: 0;
+  margin: 0 0 32px;
+  flex: 1;
+}
+
+.pricing-card-features li {
+  font-size: 14px;
+  padding: 8px 0;
+  border-bottom: 0.5px solid var(--border-soft);
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  color: var(--ink-soft);
+}
+
+.pricing-card-features li::before {
+  content: '';
+  width: 4px;
+  height: 4px;
+  border-radius: 50%;
+  background: var(--crimson);
+  flex-shrink: 0;
+}
+
+.pricing-card-cta {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 14px 32px;
+  border: 1px solid var(--ink);
+  color: var(--ink);
+  font-size: 11px;
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+  font-weight: 600;
+  background: transparent;
+  transition: all 0.5s var(--ease-out-expo);
+  text-decoration: none;
+  cursor: pointer;
+}
+
+.pricing-card-cta:hover {
+  background: var(--ink);
+  color: var(--paper);
+  border-color: var(--ink);
+}
+
+.pricing-card.featured .pricing-card-cta {
+  background: var(--crimson);
+  border-color: var(--crimson);
+  color: white;
+}
+
+.pricing-card.featured .pricing-card-cta:hover {
+  background: #a00028;
+  border-color: #a00028;
+}
+
+/* ---- Installments Banner ---- */
+.installments-banner {
+  text-align: center;
+  padding: 60px var(--margin-mobile);
+  background: var(--paper-warm);
+  border-top: 0.5px solid var(--border);
+  border-bottom: 0.5px solid var(--border);
+}
+
+@media (min-width: 768px) {
+  .installments-banner {
+    padding: 80px var(--margin-desktop);
+  }
+}
+
+.installments-banner h2 {
+  font-family: var(--font-display);
+  font-size: clamp(28px, 3.5vw, 40px);
+  font-weight: 600;
+  line-height: 1.15;
+  margin-bottom: 12px;
+}
+
+.installments-banner p {
+  color: var(--ink-light);
+  max-width: 500px;
+  margin: 0 auto 8px;
+  font-size: 15px;
+  line-height: 1.6;
+}
+
+.installments-highlight {
+  color: var(--crimson);
+  font-weight: 600;
+}
+
+/* ---- Form ---- */
+.pricing-form-section {
+  padding: 80px var(--margin-mobile) var(--section-gap);
+  max-width: 640px;
+  margin: 0 auto;
+}
+
+@media (min-width: 768px) {
+  .pricing-form-section {
+    padding: 100px var(--margin-desktop) var(--section-gap);
+  }
+}
+
+.pricing-form-section h2 {
+  text-align: center;
+  margin-bottom: 8px;
+}
+
+.pricing-form-section > p {
+  text-align: center;
+  color: var(--ink-light);
+  margin-bottom: 48px;
+  font-size: 15px;
+}
+
+.pricing-form {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+.form-group {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.form-group label {
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.15em;
+  text-transform: uppercase;
+  color: var(--ink-soft);
+}
+
+.form-group input,
+.form-group select,
+.form-group textarea {
+  font-family: var(--font-body);
+  font-size: 15px;
+  padding: 12px 16px;
+  border: 0.5px solid var(--border);
+  background: var(--paper-bright);
+  color: var(--ink);
+  outline: none;
+  transition: border-color 0.3s var(--ease-out-expo);
+  border-radius: 0;
+}
+
+.form-group input:focus,
+.form-group select:focus,
+.form-group textarea:focus {
+  border-color: var(--crimson);
+}
+
+.form-group textarea {
+  min-height: 120px;
+  resize: vertical;
+}
+
+.form-submit {
+  padding: 16px 40px;
+  background: var(--ink);
+  color: var(--paper);
+  border: none;
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+  cursor: pointer;
+  transition: background 0.4s var(--ease-out-expo);
+  margin-top: 8px;
+}
+
+.form-submit:hover {
+  background: var(--crimson);
+}
+
+.form-success {
+  display: none;
+  text-align: center;
+  padding: 40px;
+  color: var(--ink-soft);
+  font-size: 16px;
+  line-height: 1.6;
+}
+
+.form-success.visible {
+  display: block;
+}
+
+.form-success strong {
+  color: var(--crimson);
+  font-family: var(--font-display);
+  font-weight: 600;
+}
+
+@media (max-width: 767px) {
+  .pricing-card {
+    padding: 32px 24px;
+  }
+  .pricing-card-price {
+    font-size: 38px;
+  }
+}

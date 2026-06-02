@@ -176,7 +176,25 @@ class MCFWebs {
   }
 
   _hideLoading() {
-    setTimeout(() => {
+    // Wait for fonts, mask hero, and at least 1.2s before hiding
+    const minWait = new Promise((r) => setTimeout(r, 1200));
+    const heroReady = new Promise((r) => {
+      const check = () => {
+        if (this.heroMask && this.heroMask.ready) { r(); return; }
+        setTimeout(check, 100);
+      };
+      check();
+    });
+    // Also wait for scroll video
+    const videoReady = new Promise((r) => {
+      const check = () => {
+        if (this.scrollVideo && this.scrollVideo.ready) { r(); return; }
+        setTimeout(check, 100);
+      };
+      check();
+    });
+
+    Promise.race([Promise.all([minWait, heroReady, videoReady]), new Promise((r) => setTimeout(r, 5000))]).then(() => {
       if (this.loadingScreen) {
         this.loadingScreen.classList.add('hidden');
         setTimeout(() => {
@@ -185,7 +203,7 @@ class MCFWebs {
           }
         }, 800);
       }
-    }, 1200);
+    });
   }
 }
 
