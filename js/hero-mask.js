@@ -57,7 +57,6 @@ class HoverMaskHero {
     this.gammaRef = 0;
     this.betaRef = 0;
     this.gyroCalibrated = false;
-    this.gyroHandler = null;
 
     // On mobile, activate the mask immediately
     this.active = true;
@@ -80,18 +79,48 @@ class HoverMaskHero {
       this.my = Math.max(0, Math.min(rect.height, cy));
     };
 
-    // Platform detection: iOS 13+ requires permission via user gesture
-    const needsPermission = typeof DeviceOrientationEvent !== 'undefined' && typeof DeviceOrientationEvent.requestPermission === 'function';
+    // Show tap hint, then request permission on any touch
+    this._showGyroHint();
 
-    if (needsPermission) {
-      // Wait for app.js to grant permission via touchstart
-      window.addEventListener('gyro-permission-granted', () => {
-        window.addEventListener('deviceorientation', this.gyroHandler, { passive: true });
-      }, { once: true });
-    } else {
-      // Android / desktop: attach immediately
+    const attachHandler = () => {
       window.addEventListener('deviceorientation', this.gyroHandler, { passive: true });
-    }
+    };
+
+    // Try to attach on first touch, regardless of platform
+    const onFirstTouch = () => {
+      document.removeEventListener('touchstart', onFirstTouch);
+
+      // iOS 13+ needs explicit permission API
+      if (typeof DeviceOrientationEvent !== 'undefined' && typeof DeviceOrientationEvent.requestPermission === 'function') {
+        DeviceOrientationEvent.requestPermission().then((state) => {
+          if (state === 'granted') attachHandler();
+        }).catch(() => {
+          // Fallback: just try anyway
+          attachHandler();
+        });
+      } else {
+        // Android / others: try directly (will work if permission is granted by browser)
+        attachHandler();
+      }
+    };
+
+    document.addEventListener('touchstart', onFirstTouch, { once: true, passive: true });
+  }
+
+  _showGyroHint() {
+    const hint = document.createElement('div');
+    hint.id = 'gyro-hint';
+    hint.textContent = 'Tap to activate tilt';
+    hint.style.cssText = 'position:fixed;bottom:120px;left:50%;transform:translateX(-50%);z-index:50;background:rgba(0,0,0,0.75);color:white;padding:10px 20px;border-radius:4px;font-size:12px;letter-spacing:0.1em;font-family:"Hanken Grotesk",sans-serif;opacity:1;transition:opacity 0.6s;pointer-events:none;';
+    document.body.appendChild(hint);
+
+    // Remove hint on first touch
+    const remove = () => {
+      hint.style.opacity = '0';
+      setTimeout(() => { if (hint.parentNode) hint.parentNode.removeChild(hint); }, 600);
+      document.removeEventListener('touchstart', remove);
+    };
+    document.addEventListener('touchstart', remove, { once: true, passive: true });
   }
 
   _setup() {

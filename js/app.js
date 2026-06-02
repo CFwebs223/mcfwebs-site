@@ -65,18 +65,6 @@ class MCFWebs {
     const hero = document.querySelector('.hero');
     if (hero) {
       this.heroMask = new HoverMaskHero(hero);
-      // iOS gyro permission: request on first tap
-      if (this.heroMask.isMobile && typeof DeviceOrientationEvent !== 'undefined' && typeof DeviceOrientationEvent.requestPermission === 'function') {
-        const requestPermission = () => {
-          DeviceOrientationEvent.requestPermission().then((state) => {
-            if (state === 'granted') {
-              window.dispatchEvent(new CustomEvent('gyro-permission-granted'));
-            }
-          }).catch(() => {});
-          document.removeEventListener('touchstart', requestPermission);
-        };
-        document.addEventListener('touchstart', requestPermission, { once: true, passive: true });
-      }
     }
   }
 
