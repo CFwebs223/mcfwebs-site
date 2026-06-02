@@ -29,9 +29,12 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Hanken+Grotesk:wght@400;500;600;700&family=Playfair+Display:ital,wght@0,500;0,600;0,700;1,500&display=swap" rel="stylesheet">
 
-  <link rel="preload" as="image" href="images/hero-front.jpg">
-  <link rel="preload" as="image" href="images/hero-back.jpg">
-  <link rel="preload" as="video" href="videos/scroll-koi.mp4">
+  <link rel="preload" as="image" href="images/hero-front.jpg" media="(min-width: 768px)">
+  <link rel="preload" as="image" href="images/hero-back.jpg" media="(min-width: 768px)">
+  <link rel="preload" as="image" href="images/hero-front-mobile.jpg" media="(max-width: 767px)">
+  <link rel="preload" as="image" href="images/hero-back-mobile.jpg" media="(max-width: 767px)">
+  <link rel="preload" as="video" href="videos/scroll-koi.mp4" media="(min-width: 768px)">
+  <link rel="preload" as="video" href="videos/scroll-koi-mobile.mp4" media="(max-width: 767px)">
 
   <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>⚫</text></svg>">
   <link rel="stylesheet" href="css/style.css">
@@ -100,8 +103,12 @@
   <!-- ==================== HOVER MASK HERO ==================== -->
   <section class="hero" id="hero" aria-label="Hero">
     <div class="hero-images">
+      <!-- Desktop (16:9) -->
       <img class="hero-img hero-img-front" src="images/hero-front.jpg" alt="" aria-hidden="true">
       <img class="hero-img hero-img-back" src="images/hero-back.jpg" alt="" aria-hidden="true">
+      <!-- Mobile (9:16) — hidden on desktop, shown via JS -->
+      <img class="hero-img hero-img-front-mobile" src="images/hero-front-mobile.jpg" alt="" aria-hidden="true" style="display:none;">
+      <img class="hero-img hero-img-back-mobile" src="images/hero-back-mobile.jpg" alt="" aria-hidden="true" style="display:none;">
     </div>
     <canvas id="hero-mask-canvas" aria-hidden="true"></canvas>
 

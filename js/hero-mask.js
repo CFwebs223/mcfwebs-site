@@ -1,6 +1,7 @@
 /* ==========================================================================
    HoverMaskHero — Full-screen image with circular mask reveal on hover
    Canvas-based for performance. Stops completely on scroll.
+   Mobile uses 9:16 ratio images, desktop uses 16:9.
    ========================================================================== */
 
 class HoverMaskHero {
@@ -10,8 +11,9 @@ class HoverMaskHero {
     if (!this.canvas) return;
 
     this.ctx = this.canvas.getContext('2d', { alpha: false });
-    this.frontImg = document.querySelector('.hero-img-front');
-    this.backImg = document.querySelector('.hero-img-back');
+    this.isMobile = window.innerWidth < 768;
+    this.frontImg = document.querySelector(this.isMobile ? '.hero-img-front-mobile' : '.hero-img-front');
+    this.backImg = document.querySelector(this.isMobile ? '.hero-img-back-mobile' : '.hero-img-back');
 
     this.mx = -999;
     this.my = -999;
@@ -68,6 +70,13 @@ class HoverMaskHero {
 
   resize() {
     if (!this.ready || this.paused) return;
+    // Check if mobile/desktop changed
+    const wasMobile = this.isMobile;
+    this.isMobile = window.innerWidth < 768;
+    if (wasMobile !== this.isMobile) {
+      this.frontImg = document.querySelector(this.isMobile ? '.hero-img-front-mobile' : '.hero-img-front');
+      this.backImg = document.querySelector(this.isMobile ? '.hero-img-back-mobile' : '.hero-img-back');
+    }
     this._size();
     this._drawStatic();
   }

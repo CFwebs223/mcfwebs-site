@@ -1,7 +1,8 @@
 /* ==========================================================================
-   ScrollVideo — 25fps scroll-driven video playback
-   Renders frames to a display canvas. Pre-renders frames behind the scenes
-   to eliminate lag. Falls back to live seeking for uncached frames.
+   ScrollVideo — High-performance scroll-driven video playback
+   Uses direct GPU-accelerated video element seeking.
+   Incorporates lerped animation frame seeking and seeking checks
+   to eliminate lag and heavy RAM caching.
    ========================================================================== */
 
 class ScrollVideo {
@@ -13,30 +14,19 @@ class ScrollVideo {
 
     if (!this.sticky) return;
 
-    this.totalFrames = 0;
-    this.fps = 25;
     this.ready = false;
     this.lastTextPhase = -1;
+    this.targetProgress = 0;
+    this.currentProgress = 0;
+    this.isActive = false;
 
-    // Source video (hidden, used for decode only)
+    // Direct display video
     this.video = document.createElement('video');
+    this.video.id = 'scroll-video-el';
     this.video.muted = true;
     this.video.playsInline = true;
     this.video.loop = false;
     this.video.preload = 'auto';
-
-    // Display canvas
-    this.canvas = document.createElement('canvas');
-    this.canvas.className = 'scroll-video-canvas';
-    this.ctx = null;
-    this.cw = 0;
-    this.ch = 0;
-    this.dx = 0; this.dy = 0; this.dw = 0; this.dh = 0;
-
-    // Frame cache: key is frame number, value is ImageData
-    this.cache = {};
-    this.currentFrame = -1;
-    this.totalCached = 0;
 
     this.phases = [
       { start: 0, end: 0.2, label: 'The Beginning', title: 'A Single\nStroke', desc: 'Every creation begins as a moment of intention — ink meeting paper.' },
@@ -50,10 +40,19 @@ class ScrollVideo {
 
   async _init() {
     try {
-      const src = document.createElement('source');
-      src.src = 'videos/scroll-koi.mp4';
-      src.type = 'video/mp4';
-      this.video.appendChild(src);
+      const isMobile = window.innerWidth < 768;
+      const videoBase = isMobile ? 'videos/scroll-koi-mobile' : 'videos/scroll-koi';
+
+      // Add multiple sources: webm first for performance, mp4 as fallback
+      const webmSrc = document.createElement('source');
+      webmSrc.src = videoBase + '.webm';
+      webmSrc.type = 'video/webm';
+      this.video.appendChild(webmSrc);
+
+      const mp4Src = document.createElement('source');
+      mp4Src.src = videoBase + '.mp4';
+      mp4Src.type = 'video/mp4';
+      this.video.appendChild(mp4Src);
 
       await new Promise((resolve, reject) => {
         this.video.addEventListener('loadedmetadata', resolve, { once: true });
@@ -63,101 +62,33 @@ class ScrollVideo {
 
       if (!this.video.duration || this.video.duration <= 0) throw new Error('No duration');
 
-      this.totalFrames = Math.floor(this.video.duration * this.fps);
+      // Insert video into DOM (after sticky but before overlays)
+      this.sticky.insertBefore(this.video, this.sticky.firstChild);
 
-      // Size canvas
-      this._resize();
-
-      // Insert canvas into DOM (after sticky but before overlays)
-      this.sticky.insertBefore(this.canvas, this.sticky.firstChild);
-      this.ctx = this.canvas.getContext('2d', { alpha: false, willReadFrequently: false });
-
-      // Seek first frame and cache it
-      await this._cacheOneFrame(0);
-
-      // Draw first frame
-      this.currentFrame = 0;
-      this._drawFrame();
+      // Force seek to 0 first
+      this.video.currentTime = 0;
       this.ready = true;
-      this.canvas.classList.add('visible');
+      this.video.classList.add('visible');
 
-      // Cache remaining frames in background
-      this._cacheAllFrames();
+      // Start RAF loop
+      this._loop();
 
       window.addEventListener('scroll', () => this._onScroll(), { passive: true });
-      window.addEventListener('resize', () => this._resize(), { passive: true });
     } catch (e) {
       console.warn('ScrollVideo init failed:', e);
       if (this.section) this.section.style.display = 'none';
     }
   }
 
-  _resize() {
-    const rect = this.sticky.getBoundingClientRect();
-    this.cw = rect.width || window.innerWidth;
-    this.ch = rect.height || window.innerHeight;
-    this.canvas.width = this.cw;
-    this.canvas.height = this.ch;
-
-    const vw = this.video.videoWidth || 1280;
-    const vh = this.video.videoHeight || 720;
-    const scale = Math.max(this.cw / vw, this.ch / vh);
-    this.dw = Math.ceil(vw * scale);
-    this.dh = Math.ceil(vh * scale);
-    this.dx = Math.floor((this.cw - this.dw) / 2);
-    this.dy = Math.floor((this.ch - this.dh) / 2);
-  }
-
-  // Seek to ONE frame, draw it to temp canvas, cache as ImageData
-  _cacheOneFrame(frameIdx) {
-    return new Promise((resolve) => {
-      if (this.cache[frameIdx]) { resolve(); return; }
-
-      const t = frameIdx / this.fps;
-      if (t >= this.video.duration) { resolve(); return; }
-
-      // Use a temp canvas at full display size to capture the rendered frame
-      const tmp = document.createElement('canvas');
-      tmp.width = this.cw;
-      tmp.height = this.ch;
-      const tctx = tmp.getContext('2d', { alpha: false, willReadFrequently: true });
-
-      const seeked = () => {
-        this.video.removeEventListener('seeked', seeked);
-        try {
-          tctx.drawImage(this.video, this.dx, this.dy, this.dw, this.dh);
-          this.cache[frameIdx] = tctx.getImageData(0, 0, this.cw, this.ch);
-          this.totalCached++;
-        } catch (e) {
-          // Frame failed to capture
-        }
-        resolve();
-      };
-
-      this.video.addEventListener('seeked', seeked, { once: true });
-      this.video.currentTime = t;
-    });
-  }
-
-  // Cache ALL frames in background
-  async _cacheAllFrames() {
-    for (let i = 1; i < this.totalFrames; i++) {
-      await this._cacheOneFrame(i);
-      // Yield every frame so the UI stays responsive
-      await new Promise(r => setTimeout(r, 0));
-    }
-  }
-
   scrollStarted() {
-    if (this.currentFrame >= 0) {
-      this._drawFrame();
-    }
+    this.isActive = true;
+    this.video.classList.add('visible');
   }
 
-  // Called when user scrolls back to top
   scrollBack() {
-    this.currentFrame = -1;
-    this.canvas.classList.remove('visible');
+    this.isActive = false;
+    this.targetProgress = 0;
+    this.video.classList.remove('visible');
   }
 
   _onScroll() {
@@ -168,12 +99,7 @@ class ScrollVideo {
     if (total <= 0) return;
 
     const progress = Math.min(1, Math.max(0, -rect.top / total));
-    const frame = Math.min(this.totalFrames - 1, Math.floor(progress * this.totalFrames));
-
-    if (frame !== this.currentFrame) {
-      this.currentFrame = frame;
-      this._drawFrame();
-    }
+    this.targetProgress = progress;
 
     if (this.progressBar) this.progressBar.style.height = (progress * 100) + '%';
     if (this.progressPct) this.progressPct.textContent = Math.round(progress * 100) + '%';
@@ -181,15 +107,24 @@ class ScrollVideo {
     this._updateText(progress);
   }
 
-  _drawFrame() {
-    const data = this.cache[this.currentFrame];
-    if (data && this.ctx) {
-      this.ctx.putImageData(data, 0, 0);
-    } else if (this.ctx) {
-      // Frame not cached yet — draw directly from video
-      try {
-        this.ctx.drawImage(this.video, this.dx, this.dy, this.dw, this.dh);
-      } catch {}
+  _loop() {
+    requestAnimationFrame(() => this._loop());
+
+    if (!this.ready || !this.video) return;
+
+    // Smoothly interpolate currentProgress towards targetProgress
+    // This adds beautiful motion easing to the scroll video seek!
+    const diff = this.targetProgress - this.currentProgress;
+    this.currentProgress += diff * 0.08;
+
+    // Check if the current time matches the target time
+    const targetTime = this.currentProgress * this.video.duration;
+    const timeDiff = Math.abs(this.video.currentTime - targetTime);
+
+    // Only update currentTime if it differs significantly and we are not currently seeking.
+    // This is the CRITICAL optimization that prevents scroll seeking congestion and lag!
+    if (timeDiff > 0.02 && !this.video.seeking) {
+      this.video.currentTime = targetTime;
     }
   }
 
@@ -200,22 +135,34 @@ class ScrollVideo {
     }
     if (idx === this.lastTextPhase) return;
 
-    document.querySelectorAll('.scroll-text-label, .scroll-text-title, .scroll-text-desc').forEach(el => el.classList.remove('visible'));
-    this.lastTextPhase = idx;
-    if (idx < 0) return;
-
-    const p = this.phases[idx];
     const le = document.querySelector('.scroll-text-label');
     const te = document.querySelector('.scroll-text-title');
     const de = document.querySelector('.scroll-text-desc');
 
-    if (le) { le.classList.remove('visible'); le.textContent = p.label; requestAnimationFrame(() => requestAnimationFrame(() => le.classList.add('visible'))); }
-    if (te) { te.classList.remove('visible'); te.innerHTML = p.title; requestAnimationFrame(() => requestAnimationFrame(() => te.classList.add('visible'))); }
-    if (de) { de.classList.remove('visible'); de.textContent = p.desc; requestAnimationFrame(() => requestAnimationFrame(() => de.classList.add('visible'))); }
+    // Fade out elements first
+    if (le) le.classList.remove('visible');
+    if (te) te.classList.remove('visible');
+    if (de) de.classList.remove('visible');
+
+    this.lastTextPhase = idx;
+    if (idx < 0) return;
+
+    const p = this.phases[idx];
+
+    // Wait slightly for fade-out, then update content and fade-in
+    setTimeout(() => {
+      if (idx !== this.lastTextPhase) return; // Ignore if user scrolled past
+      if (le) { le.textContent = p.label; le.classList.add('visible'); }
+      if (te) { te.innerHTML = p.title; te.classList.add('visible'); }
+      if (de) { de.textContent = p.desc; de.classList.add('visible'); }
+    }, 150); // matches CSS transition fade-out time
   }
 
   destroy() {
-    if (this.video) { this.video.pause(); this.video.src = ''; }
-    if (this.canvas) this.canvas.remove();
+    if (this.video) {
+      this.video.pause();
+      this.video.src = '';
+      this.video.remove();
+    }
   }
 }
