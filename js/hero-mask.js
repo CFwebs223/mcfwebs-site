@@ -24,9 +24,8 @@ class HoverMaskHero {
     this.ready = false;
     this.paused = false;
 
-    // Smoother video loop crossfade
+    // Video loop fade-in smoothing
     this.videoOpacity = 1;
-    this.videoFading = false;
 
     this.tiltRadius = 100;
 
@@ -237,24 +236,14 @@ class HoverMaskHero {
     if (this.paused || !this.ready) return;
     if (this.container.getBoundingClientRect().bottom < 0) return;
 
-    // ---- Smoother video loop crossfade ----
+    // ---- Very short fade-in at loop start (0.15s) to smooth the wrap ----
     if (this.useVideo && this.frontVideo && this.backVideo) {
-      const dur = this.frontVideo.duration;
       const ct = this.frontVideo.currentTime;
-      const fd = 0.6; // Longer fade = smoother
-
-      if (dur > 0 && ct > dur - fd) {
-        // Fade out over last 0.6s
-        this.videoOpacity = Math.max(0, (dur - ct) / fd);
-        this.videoFading = true;
-      } else if (ct < fd * 0.5 && this.videoFading) {
-        // Fade in over first 0.3s of new loop
-        this.videoOpacity = Math.min(1, ct / (fd * 0.5));
-        // After finishing fade-in, end the fading state
-        if (this.videoOpacity >= 0.99) this.videoFading = false;
-      } else if (ct >= fd * 0.5) {
+      // Only fade in the first 0.15s of each loop — no fade-out
+      if (ct < 0.15) {
+        this.videoOpacity = Math.min(1, ct / 0.15);
+      } else {
         this.videoOpacity = 1;
-        this.videoFading = false;
       }
     }
 
