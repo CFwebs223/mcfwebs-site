@@ -1,5 +1,5 @@
 /* ==========================================================================
-   HoverMaskHero — Desktop: circle mask (images), Mobile: particle reveal (videos)
+   HoverMaskHero — Desktop: circle mask (images). Mobile: tilt circle mask (videos).
    ========================================================================== */
 
 class HoverMaskHero {
@@ -12,7 +12,6 @@ class HoverMaskHero {
     this.isMobile = window.innerWidth < 768;
     this.useVideo = this.isMobile;
 
-    // Desktop: circle mask
     this.mx = -999;
     this.my = -999;
     this.cx = -999;
@@ -20,32 +19,20 @@ class HoverMaskHero {
     this.radius = 0;
     this.targetRadius = 0;
     this.active = false;
-    this.mouseOnCanvas = false;
-
-    // Mobile: gyro + particle
     this.gyroActive = false;
-    this.gyroFrozen = false;
     this.dismissTimer = null;
     this.ready = false;
     this.paused = false;
 
-    // Video loop crossfade
+    // Smoother video loop crossfade
     this.videoOpacity = 1;
     this.videoFading = false;
 
-    // Particles (mobile only)
-    this.particles = [];
-    this.pActive = false;
-    this.pScattering = false;
-    this.pTargetX = 0;
-    this.pTargetY = 0;
-    this.pRadius = 80;
-    this.pCount = 250;
+    this.tiltRadius = 100;
 
     this._boundMove = (e) => this._onMove(e);
     this._boundEnter = () => this._onEnter();
     this._boundLeave = () => this._onLeave();
-    this._boundTouch = (e) => this._onTouch(e);
 
     if (this.useVideo) {
       this._loadVideos();
@@ -96,7 +83,6 @@ class HoverMaskHero {
       this.ready = true;
       this.frontVideo.play().catch(() => {});
       this.backVideo.play().catch(() => {});
-      this._initParticles();
       this._createGyroOverlay();
     };
 
@@ -115,70 +101,12 @@ class HoverMaskHero {
     }, 5000);
   }
 
-  /* ---- Particles (mobile only) ---- */
-  _initParticles() {
-    this.particles = [];
-    for (let i = 0; i < this.pCount; i++) {
-      const a = Math.random() * Math.PI * 2;
-      const d = 100 + Math.random() * Math.max(this.cw, this.ch);
-      this.particles.push({
-        x: this.cw / 2 + Math.cos(a) * d,
-        y: this.ch / 2 + Math.sin(a) * d,
-        vx: 0, vy: 0,
-        sz: 3 + Math.random() * 5,
-        ox: (Math.random() - 0.5) * this.pRadius * 1.5,
-        oy: (Math.random() - 0.5) * this.pRadius * 1.5,
-        hx: 0, hy: 0,
-        ph: Math.random() * Math.PI * 2,
-        op: 0.5 + Math.random() * 0.5,
-      });
-    }
-  }
-
-  _activateP(x, y) {
-    this.pActive = true;
-    this.pScattering = false;
-    this.pTargetX = x;
-    this.pTargetY = y;
-    for (const p of this.particles) {
-      p.hx = x + p.ox;
-      p.hy = y + p.oy;
-    }
-  }
-
-  _moveP(x, y) {
-    this.pTargetX = x;
-    this.pTargetY = y;
-    for (const p of this.particles) {
-      p.hx = x + p.ox;
-      p.hy = y + p.oy;
-    }
-  }
-
-  _scatterP() {
-    this.pActive = false;
-    this.pScattering = true;
-    for (const p of this.particles) {
-      const a = Math.random() * Math.PI * 2;
-      const s = 2 + Math.random() * 8;
-      p.vx = Math.cos(a) * s;
-      p.vy = Math.sin(a) * s;
-    }
-    setTimeout(() => {
-      this.pScattering = false;
-      this.gyroFrozen = false;
-    }, 1000);
-  }
-
   _setup() {
     this._size();
     this._drawStatic();
     this.container.addEventListener('mousemove', this._boundMove, { passive: true });
     this.container.addEventListener('mouseenter', this._boundEnter, { passive: true });
     this.container.addEventListener('mouseleave', this._boundLeave, { passive: true });
-    if (this.useVideo) {
-      this.container.addEventListener('touchstart', this._boundTouch, { passive: true });
-    }
     this._loop();
   }
 
@@ -219,12 +147,10 @@ class HoverMaskHero {
     this.gammaRef = 0;
     this.betaRef = 0;
     this.gyroCalibrated = false;
-    this._activateP(this.cw / 2, this.ch / 2);
-    this._scheduleDismiss();
+    this._activateCircle(this.tiltRadius);
 
     this.gyroHandler = (e) => {
       if (e.gamma === null || e.beta === null) return;
-      if (this.gyroFrozen) return;
       if (!this.gyroCalibrated) {
         this.gammaRef = e.gamma;
         this.betaRef = e.beta;
@@ -233,10 +159,8 @@ class HoverMaskHero {
       const gamma = e.gamma - this.gammaRef;
       const beta = e.beta - this.betaRef;
       const rect = this.container.getBoundingClientRect();
-      this._moveP(
-        Math.max(0, Math.min(rect.width, rect.width / 2 + gamma * 15)),
-        Math.max(0, Math.min(rect.height, rect.height / 2 + beta * 15))
-      );
+      this.mx = Math.max(0, Math.min(rect.width, rect.width / 2 + gamma * 15));
+      this.my = Math.max(0, Math.min(rect.height, rect.height / 2 + beta * 15));
       this._resetDismiss();
     };
 
@@ -249,18 +173,18 @@ class HoverMaskHero {
     }
   }
 
-  _resetDismiss() { if (this.dismissTimer) clearTimeout(this.dismissTimer); this._scheduleDismiss(); }
-  _scheduleDismiss() { this.dismissTimer = setTimeout(() => { this._scatterP(); }, 1500); }
+  _activateCircle(r) {
+    this.active = true;
+    this.targetRadius = r;
+    if (this.dismissTimer) clearTimeout(this.dismissTimer);
+  }
 
-  /* ---- Touch ---- */
-  _onTouch(e) {
-    if (this.paused || !this.gyroActive) return;
-    const t = e.touches[0];
-    if (!t) return;
-    const r = this.container.getBoundingClientRect();
-    this.gyroFrozen = true;
-    this._activateP(t.clientX - r.left, t.clientY - r.top);
-    this._scheduleDismiss();
+  _resetDismiss() { if (this.dismissTimer) clearTimeout(this.dismissTimer); this._scheduleDismiss(); }
+  _scheduleDismiss() { this.dismissTimer = setTimeout(() => { this._shrinkCircle(); }, 2000); }
+
+  _shrinkCircle() {
+    this.active = false;
+    this.targetRadius = 0;
   }
 
   /* ---- Mouse (desktop) ---- */
@@ -273,14 +197,13 @@ class HoverMaskHero {
 
   _onEnter() {
     if (this.paused) return;
-    this.mouseOnCanvas = true;
     this.active = true;
     this.targetRadius = 120;
   }
 
   _onLeave() {
     if (this.paused) return;
-    this.mouseOnCanvas = false;
+    if (this.useVideo) return;
     this.active = false;
     this.targetRadius = 0;
   }
@@ -291,15 +214,8 @@ class HoverMaskHero {
   }
 
   resize() { if (!this.ready || this.paused) return; this._size(); this._drawStatic(); }
-  pause() { this.paused = true; this.active = false; this.pActive = false; }
-
-  resume() {
-    if (!this.ready) return;
-    this.paused = false;
-    this._size();
-    this._drawStatic();
-    this._loop();
-  }
+  pause() { this.paused = true; this.active = false; }
+  resume() { if (!this.ready) return; this.paused = false; this._size(); this._drawStatic(); this._loop(); }
 
   _getFront() {
     if (this.useVideo && this.frontVideo && this.frontVideo.readyState >= 2) return this.frontVideo;
@@ -321,117 +237,74 @@ class HoverMaskHero {
     if (this.paused || !this.ready) return;
     if (this.container.getBoundingClientRect().bottom < 0) return;
 
-    // Video loop crossfade
+    // ---- Smoother video loop crossfade ----
     if (this.useVideo && this.frontVideo && this.backVideo) {
       const dur = this.frontVideo.duration;
       const ct = this.frontVideo.currentTime;
-      const fd = 0.4;
-      if (dur > 0 && ct > dur - fd) { this.videoOpacity = Math.max(0, (dur - ct) / fd); this.videoFading = true; }
-      else if (ct < fd && this.videoFading) { this.videoOpacity = Math.min(1, ct / fd); }
-      else if (ct >= fd) { this.videoOpacity = 1; this.videoFading = false; }
+      const fd = 0.6; // Longer fade = smoother
+
+      if (dur > 0 && ct > dur - fd) {
+        // Fade out over last 0.6s
+        this.videoOpacity = Math.max(0, (dur - ct) / fd);
+        this.videoFading = true;
+      } else if (ct < fd * 0.5 && this.videoFading) {
+        // Fade in over first 0.3s of new loop
+        this.videoOpacity = Math.min(1, ct / (fd * 0.5));
+        // After finishing fade-in, end the fading state
+        if (this.videoOpacity >= 0.99) this.videoFading = false;
+      } else if (ct >= fd * 0.5) {
+        this.videoOpacity = 1;
+        this.videoFading = false;
+      }
     }
 
+    // Smooth lerp
+    this.cx += (this.mx - this.cx) * 0.18;
+    this.cy += (this.my - this.cy) * 0.18;
+
+    // Radius lerp (both directions)
+    this.radius += (this.targetRadius - this.radius) * 0.12;
+
+    this._draw();
+  }
+
+  _draw() {
     const ctx = this.ctx;
+    const r = this.radius;
+
     ctx.clearRect(0, 0, this.cw, this.ch);
 
+    // Front layer
     if (this.useVideo && this.videoOpacity < 1) {
       ctx.fillStyle = '#000';
       ctx.fillRect(0, 0, this.cw, this.ch);
       ctx.globalAlpha = this.videoOpacity;
     }
-
-    if (!this.useVideo) {
-      // ======== DESKTOP: circle mask (images) ========
-      const src = this._getFront();
-      const back = this._getBack();
-      ctx.drawImage(src, 0, 0, this.cw, this.ch);
-
-      if (this.mouseOnCanvas) {
-        this.cx += (this.mx - this.cx) * 0.15;
-        this.cy += (this.my - this.cy) * 0.15;
-      } else {
-        this.cx = this.mx;
-        this.cy = this.my;
-      }
-      this.radius += (this.targetRadius - this.radius) * 0.12;
-
-      if (this.radius > 1 && this.active) {
-        ctx.save();
-        ctx.beginPath();
-        ctx.arc(this.cx, this.cy, this.radius, 0, Math.PI * 2);
-        ctx.clip();
-        ctx.drawImage(back, 0, 0, this.cw, this.ch);
-        ctx.restore();
-      }
-      ctx.globalAlpha = 1;
-      return;
-    }
-
-    // ======== MOBILE: particle reveal (videos) ========
-    const front = this._getFront();
-    const back = this._getBack();
-
-    const isActive = this.pActive || this.pScattering;
-
-    // Update particles
-    if (this.pActive) {
-      for (const p of this.particles) {
-        const dx = p.hx - p.x;
-        const dy = p.hy - p.y;
-        p.vx += dx * 0.1;
-        p.vy += dy * 0.1;
-        p.vx *= 0.82;
-        p.vy *= 0.82;
-        p.x += p.vx;
-        p.y += p.vy;
-        p.x += Math.sin(performance.now() * 0.003 + p.ph) * 0.3;
-        p.y += Math.cos(performance.now() * 0.003 + p.ph) * 0.3;
-      }
-    } else if (this.pScattering) {
-      for (const p of this.particles) {
-        p.vx *= 0.97;
-        p.vy *= 0.97;
-        p.x += p.vx;
-        p.y += p.vy;
-      }
-    }
-
-    if (!isActive) {
-      // Just draw front video
-      ctx.drawImage(front, 0, 0, this.cw, this.ch);
-      ctx.globalAlpha = 1;
-      return;
-    }
-
-    // Draw back image as base
-    ctx.drawImage(back, 0, 0, this.cw, this.ch);
-
-    // Draw front image, then punch each particle shape through
-    // using save/clip(draw back)/restore per particle
-    for (const p of this.particles) {
-      const d = Math.sqrt((p.x - this.pTargetX) ** 2 + (p.y - this.pTargetY) ** 2);
-      const maxD = this.pRadius * 2.5;
-      if (d < maxD) {
-        const r = p.sz * (1 - d / maxD * 0.3);
-        if (r > 1) {
-          ctx.save();
-          ctx.beginPath();
-          ctx.arc(p.x, p.y, r, 0, Math.PI * 2);
-          ctx.clip();
-          ctx.drawImage(front, 0, 0, this.cw, this.ch);
-          ctx.restore();
-        }
-      }
-    }
-
-    // Tiny glow
-    const g = ctx.createRadialGradient(this.pTargetX, this.pTargetY, 0, this.pTargetX, this.pTargetY, this.pRadius * 0.5);
-    g.addColorStop(0, 'rgba(188,0,45,0.06)');
-    g.addColorStop(1, 'rgba(188,0,45,0)');
-    ctx.fillStyle = g;
-    ctx.fillRect(0, 0, this.cw, this.ch);
-
+    ctx.drawImage(this._getFront(), 0, 0, this.cw, this.ch);
     ctx.globalAlpha = 1;
+
+    // Circle mask revealing back
+    if (r > 1) {
+      ctx.save();
+      ctx.beginPath();
+      ctx.arc(this.cx, this.cy, r, 0, Math.PI * 2);
+      ctx.clip();
+
+      if (this.useVideo && this.videoOpacity < 1) {
+        ctx.globalAlpha = this.videoOpacity;
+        ctx.drawImage(this._getBack(), 0, 0, this.cw, this.ch);
+        ctx.globalAlpha = 1;
+      } else {
+        ctx.drawImage(this._getBack(), 0, 0, this.cw, this.ch);
+      }
+
+      ctx.strokeStyle = 'rgba(255,255,255,0.12)';
+      ctx.lineWidth = 1.5;
+      ctx.beginPath();
+      ctx.arc(this.cx, this.cy, r - 1, 0, Math.PI * 2);
+      ctx.stroke();
+      ctx.restore();
+    }
   }
 
   destroy() {
@@ -439,6 +312,5 @@ class HoverMaskHero {
     this.container.removeEventListener('mousemove', this._boundMove);
     this.container.removeEventListener('mouseenter', this._boundEnter);
     this.container.removeEventListener('mouseleave', this._boundLeave);
-    this.container.removeEventListener('touchstart', this._boundTouch);
   }
 }
