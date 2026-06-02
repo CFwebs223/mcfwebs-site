@@ -1,7 +1,5 @@
 /* ==========================================================================
-   HoverMaskHero — Full-screen video + particle reveal mask
-   Desktop: images (unchanged). Mobile: videos + gyro + tap.
-   Particles swarm to reveal back image, scatter on dismiss.
+   HoverMaskHero — Desktop: circle mask (images), Mobile: particle reveal (videos)
    ========================================================================== */
 
 class HoverMaskHero {
@@ -14,10 +12,17 @@ class HoverMaskHero {
     this.isMobile = window.innerWidth < 768;
     this.useVideo = this.isMobile;
 
+    // Desktop: circle mask
     this.mx = -999;
     this.my = -999;
     this.cx = -999;
     this.cy = -999;
+    this.radius = 0;
+    this.targetRadius = 0;
+    this.active = false;
+    this.mouseOnCanvas = false;
+
+    // Mobile: gyro + particle
     this.gyroActive = false;
     this.gyroFrozen = false;
     this.dismissTimer = null;
@@ -28,22 +33,14 @@ class HoverMaskHero {
     this.videoOpacity = 1;
     this.videoFading = false;
 
-    // ---- Particle system ----
+    // Particles (mobile only)
     this.particles = [];
-    this.particleTarget = { x: -999, y: -999 };
-    this.particleRadius = 100; // radius of the reveal area
-    this.particleActive = false;
-    this.particleCount = 350;
-    this.particleScattering = false;
-    this.particleSettled = false;
-
-    // Offscreen canvas for the back image snapshot
-    this.backCanvas = null;
-    this.backCtx = null;
-    this.backSnapshotNeeded = true;
-
-    // Store back image data per-pixel position for fast lookup
-    this.backImageData = null;
+    this.pActive = false;
+    this.pScattering = false;
+    this.pTargetX = 0;
+    this.pTargetY = 0;
+    this.pRadius = 80;
+    this.pCount = 250;
 
     this._boundMove = (e) => this._onMove(e);
     this._boundEnter = () => this._onEnter();
@@ -64,7 +61,7 @@ class HoverMaskHero {
     let loaded = 0;
     const check = () => {
       loaded++;
-      if (loaded >= 2) { this.ready = true; this._initParticles(); this._setup(); }
+      if (loaded >= 2) { this.ready = true; this._setup(); }
     };
     if (this.frontImg && this.frontImg.complete) check(); else if (this.frontImg) this.frontImg.onload = check;
     if (this.backImg && this.backImg.complete) check(); else if (this.backImg) this.backImg.onload = check;
@@ -88,15 +85,11 @@ class HoverMaskHero {
     this.backVideo.crossOrigin = 'anonymous';
     this.backVideo.src = 'videos/hero-back-mobile.mp4';
 
-    let frontReady = false;
-    let backReady = false;
-
+    let frontReady = false, backReady = false;
     this.fallbackFront = document.querySelector('.hero-img-front-mobile');
     this.fallbackBack = document.querySelector('.hero-img-back-mobile');
 
-    setTimeout(() => {
-      if (!this.ready) this._setup();
-    }, 100);
+    setTimeout(() => { if (!this.ready) this._setup(); }, 100);
 
     const bothReady = () => {
       if (!frontReady || !backReady) return;
@@ -122,34 +115,59 @@ class HoverMaskHero {
     }, 5000);
   }
 
-  /* ---- Particle initialization ---- */
+  /* ---- Particles (mobile only) ---- */
   _initParticles() {
     this.particles = [];
-    for (let i = 0; i < this.particleCount; i++) {
-      // Random starting position across the canvas
-      const angle = Math.random() * Math.PI * 2;
-      const dist = 100 + Math.random() * Math.max(this.cw, this.ch);
+    for (let i = 0; i < this.pCount; i++) {
+      const a = Math.random() * Math.PI * 2;
+      const d = 100 + Math.random() * Math.max(this.cw, this.ch);
       this.particles.push({
-        x: this.cw / 2 + Math.cos(angle) * dist,
-        y: this.ch / 2 + Math.sin(angle) * dist,
-        vx: 0,
-        vy: 0,
-        size: 2 + Math.random() * 4,
-        baseSize: 2 + Math.random() * 4,
-        // Scatter destination (when dismissing)
-        scatterX: this.cw / 2 + Math.cos(angle) * dist * 0.5,
-        scatterY: this.ch / 2 + Math.sin(angle) * dist * 0.5,
-        // Target offset from center (for organic spread)
-        offsetX: (Math.random() - 0.5) * this.particleRadius * 1.2,
-        offsetY: (Math.random() - 0.5) * this.particleRadius * 1.2,
-        // Settled position within the reveal area
-        homeX: 0,
-        homeY: 0,
-        speed: 0.03 + Math.random() * 0.04,
-        phase: Math.random() * Math.PI * 2,
-        opacity: 0.6 + Math.random() * 0.4,
+        x: this.cw / 2 + Math.cos(a) * d,
+        y: this.ch / 2 + Math.sin(a) * d,
+        vx: 0, vy: 0,
+        sz: 3 + Math.random() * 5,
+        ox: (Math.random() - 0.5) * this.pRadius * 1.5,
+        oy: (Math.random() - 0.5) * this.pRadius * 1.5,
+        hx: 0, hy: 0,
+        ph: Math.random() * Math.PI * 2,
+        op: 0.5 + Math.random() * 0.5,
       });
     }
+  }
+
+  _activateP(x, y) {
+    this.pActive = true;
+    this.pScattering = false;
+    this.pTargetX = x;
+    this.pTargetY = y;
+    for (const p of this.particles) {
+      p.hx = x + p.ox;
+      p.hy = y + p.oy;
+    }
+  }
+
+  _moveP(x, y) {
+    this.pTargetX = x;
+    this.pTargetY = y;
+    for (const p of this.particles) {
+      p.hx = x + p.ox;
+      p.hy = y + p.oy;
+    }
+  }
+
+  _scatterP() {
+    this.pActive = false;
+    this.pScattering = true;
+    for (const p of this.particles) {
+      const a = Math.random() * Math.PI * 2;
+      const s = 2 + Math.random() * 8;
+      p.vx = Math.cos(a) * s;
+      p.vy = Math.sin(a) * s;
+    }
+    setTimeout(() => {
+      this.pScattering = false;
+      this.gyroFrozen = false;
+    }, 1000);
   }
 
   _setup() {
@@ -178,7 +196,6 @@ class HoverMaskHero {
         <button class="gyro-btn" id="gyro-activate-btn">ACTIVATE TILT</button>
       </div>`;
     document.body.appendChild(overlay);
-
     const activate = () => { this._requestGyro(); this._dismissOverlay(overlay); };
     const btn = document.getElementById('gyro-activate-btn');
     if (btn) btn.addEventListener('click', activate, { once: true });
@@ -202,7 +219,7 @@ class HoverMaskHero {
     this.gammaRef = 0;
     this.betaRef = 0;
     this.gyroCalibrated = false;
-    this._activateParticles(this.cw / 2, this.ch / 2);
+    this._activateP(this.cw / 2, this.ch / 2);
     this._scheduleDismiss();
 
     this.gyroHandler = (e) => {
@@ -216,9 +233,10 @@ class HoverMaskHero {
       const gamma = e.gamma - this.gammaRef;
       const beta = e.beta - this.betaRef;
       const rect = this.container.getBoundingClientRect();
-      const tx = Math.max(0, Math.min(rect.width, rect.width / 2 + gamma * 15));
-      const ty = Math.max(0, Math.min(rect.height, rect.height / 2 + beta * 15));
-      this._moveParticleTarget(tx, ty);
+      this._moveP(
+        Math.max(0, Math.min(rect.width, rect.width / 2 + gamma * 15)),
+        Math.max(0, Math.min(rect.height, rect.height / 2 + beta * 15))
+      );
       this._resetDismiss();
     };
 
@@ -231,116 +249,49 @@ class HoverMaskHero {
     }
   }
 
-  _resetDismiss() {
-    if (this.dismissTimer) clearTimeout(this.dismissTimer);
-    this._scheduleDismiss();
-  }
-
-  /* ---- Particle control ---- */
-  _activateParticles(x, y) {
-    this.particleActive = true;
-    this.particleScattering = false;
-    this.particleTarget.x = x;
-    this.particleTarget.y = y;
-    this.particleSettled = false;
-
-    // Assign each particle a home position near the target
-    for (const p of this.particles) {
-      p.homeX = x + p.offsetX;
-      p.homeY = y + p.offsetY;
-    }
-  }
-
-  _moveParticleTarget(x, y) {
-    this.particleTarget.x = x;
-    this.particleTarget.y = y;
-    this.particleSettled = false;
-
-    // Update home positions
-    for (const p of this.particles) {
-      p.homeX = x + p.offsetX;
-      p.homeY = y + p.offsetY;
-    }
-  }
-
-  _scatterParticles() {
-    this.particleActive = false;
-    this.particleScattering = true;
-    this.particleSettled = false;
-
-    // Give each particle a random scatter velocity
-    for (const p of this.particles) {
-      const angle = Math.random() * Math.PI * 2;
-      const speed = 2 + Math.random() * 6;
-      p.vx = Math.cos(angle) * speed;
-      p.vy = Math.sin(angle) * speed;
-    }
-
-    // Stop scattering after animation completes
-    setTimeout(() => {
-      this.particleScattering = false;
-      this.gyroFrozen = false;
-    }, 1200);
-  }
-
-  /* ---- Dismiss after 1.5s ---- */
-  _scheduleDismiss() {
-    if (this.dismissTimer) clearTimeout(this.dismissTimer);
-    this.dismissTimer = setTimeout(() => { this._scatterParticles(); }, 1500);
-  }
+  _resetDismiss() { if (this.dismissTimer) clearTimeout(this.dismissTimer); this._scheduleDismiss(); }
+  _scheduleDismiss() { this.dismissTimer = setTimeout(() => { this._scatterP(); }, 1500); }
 
   /* ---- Touch ---- */
   _onTouch(e) {
     if (this.paused || !this.gyroActive) return;
-    const touch = e.touches[0];
-    if (!touch) return;
-    const rect = this.container.getBoundingClientRect();
-    const tx = touch.clientX - rect.left;
-    const ty = touch.clientY - rect.top;
+    const t = e.touches[0];
+    if (!t) return;
+    const r = this.container.getBoundingClientRect();
     this.gyroFrozen = true;
-    this._activateParticles(tx, ty);
+    this._activateP(t.clientX - r.left, t.clientY - r.top);
     this._scheduleDismiss();
   }
 
-  /* ---- Mouse ---- */
+  /* ---- Mouse (desktop) ---- */
   _onMove(e) {
     if (this.paused) return;
-    const rect = this.container.getBoundingClientRect();
-    this.mx = e.clientX - rect.left;
-    this.my = e.clientY - rect.top;
+    const r = this.container.getBoundingClientRect();
+    this.mx = e.clientX - r.left;
+    this.my = e.clientY - r.top;
   }
 
   _onEnter() {
     if (this.paused) return;
-    this._activateParticles(this.mx > 0 ? this.mx : this.cw / 2, this.my > 0 ? this.my : this.ch / 2);
+    this.mouseOnCanvas = true;
+    this.active = true;
+    this.targetRadius = 120;
   }
 
   _onLeave() {
     if (this.paused) return;
-    if (this.useVideo) return;
-    this._scatterParticles();
+    this.mouseOnCanvas = false;
+    this.active = false;
+    this.targetRadius = 0;
   }
 
   _size() {
-    const w = this.container.clientWidth;
-    const h = this.container.clientHeight;
-    this.canvas.width = w;
-    this.canvas.height = h;
-    this.cw = w;
-    this.ch = h;
-    this.backSnapshotNeeded = true;
+    this.cw = this.canvas.width = this.container.clientWidth;
+    this.ch = this.canvas.height = this.container.clientHeight;
   }
 
-  resize() {
-    if (!this.ready || this.paused) return;
-    this._size();
-    this._drawStatic();
-  }
-
-  pause() {
-    this.paused = true;
-    this.particleActive = false;
-  }
+  resize() { if (!this.ready || this.paused) return; this._size(); this._drawStatic(); }
+  pause() { this.paused = true; this.active = false; this.pActive = false; }
 
   resume() {
     if (!this.ready) return;
@@ -350,22 +301,19 @@ class HoverMaskHero {
     this._loop();
   }
 
-  _getFrontSource() {
+  _getFront() {
     if (this.useVideo && this.frontVideo && this.frontVideo.readyState >= 2) return this.frontVideo;
     if (this.fallbackFront) return this.fallbackFront;
     return this.frontImg;
   }
 
-  _getBackSource() {
+  _getBack() {
     if (this.useVideo && this.backVideo && this.backVideo.readyState >= 2) return this.backVideo;
     if (this.fallbackBack) return this.fallbackBack;
     return this.backImg;
   }
 
-  _drawStatic() {
-    if (this.paused) return;
-    this.ctx.drawImage(this._getFrontSource(), 0, 0, this.cw, this.ch);
-  }
+  _drawStatic() { if (this.paused) return; this.ctx.drawImage(this._getFront(), 0, 0, this.cw, this.ch); }
 
   /* ---- Main loop ---- */
   _loop() {
@@ -377,108 +325,109 @@ class HoverMaskHero {
     if (this.useVideo && this.frontVideo && this.backVideo) {
       const dur = this.frontVideo.duration;
       const ct = this.frontVideo.currentTime;
-      const fadeDuration = 0.4;
-      if (dur > 0 && ct > dur - fadeDuration) {
-        this.videoOpacity = Math.max(0, (dur - ct) / fadeDuration);
-        this.videoFading = true;
-      } else if (ct < fadeDuration && this.videoFading) {
-        this.videoOpacity = Math.min(1, ct / fadeDuration);
-      } else if (ct >= fadeDuration) {
-        this.videoOpacity = 1;
-        this.videoFading = false;
-      }
+      const fd = 0.4;
+      if (dur > 0 && ct > dur - fd) { this.videoOpacity = Math.max(0, (dur - ct) / fd); this.videoFading = true; }
+      else if (ct < fd && this.videoFading) { this.videoOpacity = Math.min(1, ct / fd); }
+      else if (ct >= fd) { this.videoOpacity = 1; this.videoFading = false; }
     }
 
-    this._updateParticles();
-    this._draw();
-  }
-
-  _updateParticles() {
-    const dt = 1;
-
-    for (const p of this.particles) {
-      if (this.particleActive) {
-        // Swarm toward home position with spring physics
-        const dx = p.homeX - p.x;
-        const dy = p.homeY - p.y;
-        const dist = Math.sqrt(dx * dx + dy * dy);
-
-        if (dist > 1) {
-          // Ease toward target
-          p.vx += dx * 0.08 * dt;
-          p.vy += dy * 0.08 * dt;
-        }
-
-        // Damping
-        p.vx *= 0.85;
-        p.vy *= 0.85;
-
-        p.x += p.vx;
-        p.y += p.vy;
-
-        // Slight wobble for organic feel
-        p.x += Math.sin(performance.now() * 0.002 + p.phase) * 0.3;
-        p.y += Math.cos(performance.now() * 0.002 + p.phase) * 0.3;
-      } else if (this.particleScattering) {
-        // Scatter outward
-        p.vx *= 0.98;
-        p.vy *= 0.98;
-        p.x += p.vx;
-        p.y += p.vy;
-      }
-    }
-  }
-
-  _draw() {
     const ctx = this.ctx;
     ctx.clearRect(0, 0, this.cw, this.ch);
-    const frontSrc = this._getFrontSource();
-    const backSrc = this._getBackSource();
-    const isActive = this.particleActive || this.particleScattering;
-    const videosAlpha = this.useVideo && this.videoOpacity < 1 ? this.videoOpacity : 1;
 
-    if (videosAlpha < 1) {
+    if (this.useVideo && this.videoOpacity < 1) {
       ctx.fillStyle = '#000';
       ctx.fillRect(0, 0, this.cw, this.ch);
+      ctx.globalAlpha = this.videoOpacity;
     }
 
-    if (!isActive) {
-      ctx.globalAlpha = videosAlpha;
-      ctx.drawImage(frontSrc, 0, 0, this.cw, this.ch);
+    if (!this.useVideo) {
+      // ======== DESKTOP: circle mask (images) ========
+      const src = this._getFront();
+      const back = this._getBack();
+      ctx.drawImage(src, 0, 0, this.cw, this.ch);
+
+      if (this.mouseOnCanvas) {
+        this.cx += (this.mx - this.cx) * 0.15;
+        this.cy += (this.my - this.cy) * 0.15;
+      } else {
+        this.cx = this.mx;
+        this.cy = this.my;
+      }
+      this.radius += (this.targetRadius - this.radius) * 0.12;
+
+      if (this.radius > 1 && this.active) {
+        ctx.save();
+        ctx.beginPath();
+        ctx.arc(this.cx, this.cy, this.radius, 0, Math.PI * 2);
+        ctx.clip();
+        ctx.drawImage(back, 0, 0, this.cw, this.ch);
+        ctx.restore();
+      }
       ctx.globalAlpha = 1;
       return;
     }
 
-    // ---- Particle reveal: front with holes, back visible through holes ----
-    // 1. Draw front image
-    ctx.drawImage(frontSrc, 0, 0, this.cw, this.ch);
+    // ======== MOBILE: particle reveal (videos) ========
+    const front = this._getFront();
+    const back = this._getBack();
 
-    // 2. Cut holes in front where particles cluster (destination-out removes front)
-    ctx.globalCompositeOperation = 'destination-out';
-    for (const p of this.particles) {
-      const dist = Math.sqrt((p.x - this.particleTarget.x) ** 2 + (p.y - this.particleTarget.y) ** 2);
-      const maxDist = this.particleRadius * 2.5;
-      if (dist < maxDist) {
-        const size = p.size * (1 - dist / maxDist * 0.3);
-        ctx.beginPath();
-        ctx.arc(p.x, p.y, Math.max(size, 1.5), 0, Math.PI * 2);
-        ctx.fill();
+    const isActive = this.pActive || this.pScattering;
+
+    // Update particles
+    if (this.pActive) {
+      for (const p of this.particles) {
+        const dx = p.hx - p.x;
+        const dy = p.hy - p.y;
+        p.vx += dx * 0.1;
+        p.vy += dy * 0.1;
+        p.vx *= 0.82;
+        p.vy *= 0.82;
+        p.x += p.vx;
+        p.y += p.vy;
+        p.x += Math.sin(performance.now() * 0.003 + p.ph) * 0.3;
+        p.y += Math.cos(performance.now() * 0.003 + p.ph) * 0.3;
+      }
+    } else if (this.pScattering) {
+      for (const p of this.particles) {
+        p.vx *= 0.97;
+        p.vy *= 0.97;
+        p.x += p.vx;
+        p.y += p.vy;
       }
     }
 
-    // 3. Draw back image BEHIND front (shows through the holes)
+    if (!isActive) {
+      // Just draw front video
+      ctx.drawImage(front, 0, 0, this.cw, this.ch);
+      ctx.globalAlpha = 1;
+      return;
+    }
+
+    // Draw front, then overlay back image at each particle position
+    ctx.drawImage(front, 0, 0, this.cw, this.ch);
+
+    // Draw back video clipped to each particle position
+    // Use destination-out to remove particle-shaped holes from front,
+    // then destination-over to place back underneath
+    ctx.globalCompositeOperation = 'destination-out';
+    for (const p of this.particles) {
+      const d = Math.sqrt((p.x - this.pTargetX) ** 2 + (p.y - this.pTargetY) ** 2);
+      const maxD = this.pRadius * 2.5;
+      if (d < maxD) {
+        ctx.beginPath();
+        ctx.arc(p.x, p.y, p.sz * (1 - d / maxD * 0.3), 0, Math.PI * 2);
+        ctx.fill();
+      }
+    }
     ctx.globalCompositeOperation = 'destination-over';
-    ctx.drawImage(backSrc, 0, 0, this.cw, this.ch);
+    ctx.drawImage(back, 0, 0, this.cw, this.ch);
     ctx.globalCompositeOperation = 'source-over';
 
-    // Subtle glow at the reveal center
-    const grd = ctx.createRadialGradient(
-      this.particleTarget.x, this.particleTarget.y, 0,
-      this.particleTarget.x, this.particleTarget.y, this.particleRadius * 0.6
-    );
-    grd.addColorStop(0, 'rgba(188,0,45,0.06)');
-    grd.addColorStop(1, 'rgba(188,0,45,0)');
-    ctx.fillStyle = grd;
+    // Tiny glow
+    const g = ctx.createRadialGradient(this.pTargetX, this.pTargetY, 0, this.pTargetX, this.pTargetY, this.pRadius * 0.5);
+    g.addColorStop(0, 'rgba(188,0,45,0.05)');
+    g.addColorStop(1, 'rgba(188,0,45,0)');
+    ctx.fillStyle = g;
     ctx.fillRect(0, 0, this.cw, this.ch);
 
     ctx.globalAlpha = 1;
