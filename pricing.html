@@ -135,10 +135,12 @@
     <h2 class="display-md reveal">Start Your Project</h2>
     <p class="reveal reveal-delay-1">Tell us what you need and we'll craft a proposal within 24 hours.</p>
 
-    <form class="pricing-form reveal reveal-delay-2" id="pricing-form" action="#" method="POST">
+    <form class="pricing-form reveal reveal-delay-2" id="pricing-form" action="https://formspree.io/f/xgoqgrow" method="POST">
+      <div data-fs-error="plan" style="color:var(--crimson);font-size:13px;text-align:center;"></div>
+
       <div class="form-group">
         <label for="plan">Select Plan</label>
-        <select id="plan" name="plan" required>
+        <select id="plan" name="plan" required data-fs-field>
           <option value="">— Choose your plan —</option>
           <option value="digital-menu">Digital Menu — R2,000</option>
           <option value="classic-site">Classic Site — R3,500</option>
@@ -148,22 +150,22 @@
 
       <div class="form-group">
         <label for="name">Your Name</label>
-        <input type="text" id="name" name="name" required placeholder="e.g. John Doe">
+        <input type="text" id="name" name="name" required placeholder="e.g. John Doe" data-fs-field>
       </div>
 
       <div class="form-group">
         <label for="email">Email Address</label>
-        <input type="email" id="email" name="email" required placeholder="you@example.com">
+        <input type="email" id="email" name="email" required placeholder="you@example.com" data-fs-field>
       </div>
 
       <div class="form-group">
         <label for="phone">Phone Number</label>
-        <input type="tel" id="phone" name="phone" required placeholder="e.g. 078 106 4098">
+        <input type="tel" id="phone" name="phone" required placeholder="e.g. 078 106 4098" data-fs-field>
       </div>
 
       <div class="form-group">
         <label for="business">Business Name</label>
-        <input type="text" id="business" name="business" placeholder="Your business name">
+        <input type="text" id="business" name="business" placeholder="Your business name" data-fs-field>
       </div>
 
       <div class="form-group">
@@ -176,13 +178,13 @@
 
       <div class="form-group">
         <label for="message">Tell us about your project</label>
-        <textarea id="message" name="message" placeholder="Describe what you're looking for... any specific features, pages, or design preferences."></textarea>
+        <textarea id="message" name="message" placeholder="Describe what you're looking for... any specific features, pages, or design preferences." data-fs-field></textarea>
       </div>
 
-      <button type="submit" class="form-submit">Send Enquiry</button>
+      <button type="submit" class="form-submit" data-fs-submit-btn>Send Enquiry</button>
     </form>
 
-    <div class="form-success" id="form-success">
+    <div class="form-success" data-fs-success>
       <p style="font-family:var(--font-display);font-size:28px;font-weight:600;color:var(--crimson);margin-bottom:12px;">Thank You</p>
       <p>Your enquiry has been sent. We'll respond within 24 hours.</p>
       <p style="margin-top:24px;">In the meantime, you can reach us directly at<br>
@@ -206,6 +208,7 @@
     </div>
   </footer>
 
+  <script src="https://unpkg.com/@formspree/ajax@1" defer></script>
   <script>
     // ---- Mobile nav ----
     (function() {
@@ -248,33 +251,9 @@
       }
     })();
 
-    // ---- Form submission (mailto fallback) ----
-    document.getElementById('pricing-form').addEventListener('submit', function(e) {
-      e.preventDefault();
-      var plan = document.getElementById('plan').value;
-      var name = document.getElementById('name').value;
-      var email = document.getElementById('email').value;
-      var phone = document.getElementById('phone').value;
-      var business = document.getElementById('business').value;
-      var instalments = document.getElementById('instalments').value;
-      var message = document.getElementById('message').value;
-
-      var subject = 'New Website Enquiry from ' + name;
-      var body = 'Plan: ' + plan + '\nName: ' + name + '\nEmail: ' + email + '\nPhone: ' + phone + '\nBusiness: ' + business + '\nInstalments: ' + instalments + '\n\nMessage:\n' + message;
-
-      // Try mailto first
-      window.location.href = 'mailto:feletchristopher@gmail.com?subject=' + encodeURIComponent(subject) + '&body=' + encodeURIComponent(body);
-
-      // Also send via WhatsApp as backup
-      var waText = 'New Enquiry from ' + name + ' (' + email + ', ' + phone + '):\nPlan: ' + plan + '\n' + message;
-      setTimeout(function() {
-        window.open('https://wa.me/27781064098?text=' + encodeURIComponent(waText), '_blank');
-      }, 500);
-
-      // Show success
-      document.getElementById('pricing-form').style.display = 'none';
-      document.getElementById('form-success').classList.add('visible');
-    });
+    // ---- Formspree Ajax init ----
+    window.formspree = window.formspree || function () { (formspree.q = formspree.q || []).push(arguments); };
+    formspree('initForm', { formElement: '#pricing-form', formId: 'xgoqgrow' });
   </script>
 </body>
 </html>
