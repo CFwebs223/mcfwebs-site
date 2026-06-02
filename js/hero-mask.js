@@ -1,8 +1,7 @@
 /* ==========================================================================
-   HoverMaskHero — Full-screen image with circular mask reveal on hover
-   Canvas-based for performance. Stops completely on scroll.
-   Mobile uses 9:16 ratio images, desktop uses 16:9.
-   With fullscreen gyro overlay for permission + ripple dismiss.
+   HoverMaskHero — Full-screen video + mask reveal
+   Canvas composites two videos: front (base) + back (reveal via circle mask).
+   Desktop: images (unchanged). Mobile: videos + gyro + tap + auto-ripple.
    ========================================================================== */
 
 class HoverMaskHero {
@@ -13,8 +12,9 @@ class HoverMaskHero {
 
     this.ctx = this.canvas.getContext('2d', { alpha: false });
     this.isMobile = window.innerWidth < 768;
-    this.frontImg = document.querySelector(this.isMobile ? '.hero-img-front-mobile' : '.hero-img-front');
-    this.backImg = document.querySelector(this.isMobile ? '.hero-img-back-mobile' : '.hero-img-back');
+
+    // Desktop uses images, mobile uses videos
+    this.useVideo = this.isMobile;
 
     this.mx = -999;
     this.my = -999;
@@ -23,41 +23,94 @@ class HoverMaskHero {
     this.radius = 0;
     this.targetRadius = 0;
     this.active = false;
-    this.maxRadius = this.isMobile ? 200 : 140;
-    this.minRadius = 60;
-    this.loaded = 0;
-    this.ready = false;
-    this.paused = false;
     this.gyroActive = false;
     this.dismissTimer = null;
+    this.rippleAnim = null;
+    this.ready = false;
+    this.paused = false;
+
+    // Mobile: smaller mask for tilt, slightly larger for tap
+    this.tiltRadius = 80;
+    this.tapRadius = 130;
 
     this._boundMove = (e) => this._onMove(e);
     this._boundEnter = () => this._onEnter();
     this._boundLeave = () => this._onLeave();
     this._boundTouch = (e) => this._onTouch(e);
 
-    if (this.isMobile) {
-      this._createGyroOverlay();
+    if (this.useVideo) {
+      this._loadVideos();
+    } else {
+      this.frontImg = document.querySelector('.hero-img-front');
+      this.backImg = document.querySelector('.hero-img-back');
+      this._loadImages();
     }
-
-    this._loadImages();
   }
 
+  /* ---- Desktop: images ---- */
   _loadImages() {
     let loaded = 0;
     const check = () => {
       loaded++;
-      if (loaded >= 2) {
-        this.ready = true;
-        this._setup();
-      }
+      if (loaded >= 2) { this.ready = true; this._setup(); }
     };
     if (this.frontImg && this.frontImg.complete) check(); else if (this.frontImg) this.frontImg.onload = check;
     if (this.backImg && this.backImg.complete) check(); else if (this.backImg) this.backImg.onload = check;
   }
 
-  /* ----- Gyro overlay (fullscreen, forces tap) ----- */
+  /* ---- Mobile: videos ---- */
+  _loadVideos() {
+    this.frontVideo = document.createElement('video');
+    this.frontVideo.muted = true;
+    this.frontVideo.loop = true;
+    this.frontVideo.playsInline = true;
+    this.frontVideo.preload = 'auto';
+    this.frontVideo.src = 'videos/hero-front-mobile.mp4';
+
+    this.backVideo = document.createElement('video');
+    this.backVideo.muted = true;
+    this.backVideo.loop = true;
+    this.backVideo.playsInline = true;
+    this.backVideo.preload = 'auto';
+    this.backVideo.src = 'videos/hero-back-mobile.mp4';
+
+    let loaded = 0;
+    const check = () => {
+      loaded++;
+      if (loaded >= 2) {
+        this.frontVideo.play().catch(() => {});
+        this.backVideo.play().catch(() => {});
+        this.ready = true;
+        this._createGyroOverlay();
+        this._setup();
+      }
+    };
+
+    this.frontVideo.addEventListener('loadeddata', check, { once: true });
+    this.backVideo.addEventListener('loadeddata', check, { once: true });
+    // Fallback if already loaded
+    if (this.frontVideo.readyState >= 2) check();
+    if (this.backVideo.readyState >= 2) check();
+  }
+
+  _setup() {
+    this._size();
+    this._drawStatic();
+
+    this.container.addEventListener('mousemove', this._boundMove, { passive: true });
+    this.container.addEventListener('mouseenter', this._boundEnter, { passive: true });
+    this.container.addEventListener('mouseleave', this._boundLeave, { passive: true });
+
+    if (this.useVideo) {
+      this.container.addEventListener('touchstart', this._boundTouch, { passive: true });
+    }
+
+    this._loop();
+  }
+
+  /* ---- Gyro overlay (mobile only) ---- */
   _createGyroOverlay() {
+    if (!this.useVideo) return;
     const overlay = document.createElement('div');
     overlay.id = 'gyro-overlay';
     overlay.innerHTML = `
@@ -80,12 +133,7 @@ class HoverMaskHero {
     `;
     document.body.appendChild(overlay);
 
-    // Activate on button click or overlay tap
-    const activate = () => {
-      this._requestGyroPermission();
-      this._dismissOverlay(overlay);
-    };
-
+    const activate = () => { this._requestGyro(); this._dismissOverlay(overlay); };
     const btn = document.getElementById('gyro-activate-btn');
     if (btn) btn.addEventListener('click', activate, { once: true });
     overlay.addEventListener('click', (e) => {
@@ -93,29 +141,26 @@ class HoverMaskHero {
         if (!this.gyroActive) activate();
       }
     }, { once: true });
-
-    // Prevent hero scroll from triggering while overlay is shown
-    overlay.addEventListener('touchmove', (e) => e.preventDefault(), { passive: false });
   }
 
   _dismissOverlay(overlay) {
     overlay.classList.add('gyro-fade-out');
-    setTimeout(() => {
-      if (overlay.parentNode) overlay.parentNode.removeChild(overlay);
-    }, 500);
+    setTimeout(() => { if (overlay.parentNode) overlay.parentNode.removeChild(overlay); }, 500);
+
+    // Also start playing front/back videos after overlay dismissed
+    if (this.frontVideo) this.frontVideo.play().catch(() => {});
+    if (this.backVideo) this.backVideo.play().catch(() => {});
   }
 
-  _requestGyroPermission() {
+  _requestGyro() {
     if (this.gyroActive) return;
     this.gyroActive = true;
 
     this.gammaRef = 0;
     this.betaRef = 0;
     this.gyroCalibrated = false;
-
-    // Activate mask
-    this.active = true;
-    this.targetRadius = this.maxRadius;
+    this._activateMask(this.tiltRadius);
+    this._scheduleDismiss();
 
     this.gyroHandler = (e) => {
       if (e.gamma === null || e.beta === null) return;
@@ -127,64 +172,72 @@ class HoverMaskHero {
       const gamma = e.gamma - this.gammaRef;
       const beta = e.beta - this.betaRef;
       const rect = this.container.getBoundingClientRect();
-      const cx = rect.width / 2 + gamma * 8;
-      const cy = rect.height / 2 + beta * 8;
+      const cx = rect.width / 2 + gamma * 10;
+      const cy = rect.height / 2 + beta * 10;
       this.mx = Math.max(0, Math.min(rect.width, cx));
       this.my = Math.max(0, Math.min(rect.height, cy));
 
-      // Reset dismiss timer on tilt
-      this._resetDismissTimer();
+      // Every tilt resets the 1.5s dismiss timer
+      this._resetDismiss();
     };
 
-    // iOS 13+
     if (typeof DeviceOrientationEvent !== 'undefined' && typeof DeviceOrientationEvent.requestPermission === 'function') {
       DeviceOrientationEvent.requestPermission().then((state) => {
-        if (state === 'granted') {
-          window.addEventListener('deviceorientation', this.gyroHandler, { passive: true });
-        }
+        if (state === 'granted') window.addEventListener('deviceorientation', this.gyroHandler, { passive: true });
       }).catch(() => {});
     } else {
       window.addEventListener('deviceorientation', this.gyroHandler, { passive: true });
     }
   }
 
-  /* ----- Ripple dismiss 0.7s after last action ----- */
-  _resetDismissTimer() {
+  _resetDismiss() {
+    if (this.rippleAnim) { cancelAnimationFrame(this.rippleAnim); this.rippleAnim = null; }
+    if (this.dismissTimer) clearTimeout(this.dismissTimer);
+    this._scheduleDismiss();
+  }
+
+  /* ---- Mask activation ---- */
+  _activateMask(radius) {
+    this.active = true;
+    this.targetRadius = radius;
+    if (this.dismissTimer) clearTimeout(this.dismissTimer);
+    if (this.rippleAnim) { cancelAnimationFrame(this.rippleAnim); this.rippleAnim = null; }
+  }
+
+  /* ---- Ripple dismiss after 1.5s ---- */
+  _scheduleDismiss() {
     if (this.dismissTimer) clearTimeout(this.dismissTimer);
     this.dismissTimer = setTimeout(() => {
       this._rippleDismiss();
-    }, 700);
+    }, 1500);
   }
 
   _rippleDismiss() {
-    // Save current mask position for the ripple
     const sx = this.cx;
     const sy = this.cy;
-    const startRadius = this.radius;
-
-    // Animate radius shrinking to 0 with ease-out
-    const duration = 400;
+    const startR = this.radius;
+    const duration = 500;
     const start = performance.now();
+
     const animate = (now) => {
       const t = Math.min((now - start) / duration, 1);
-      // Ease-out cubic
       const ease = 1 - Math.pow(1 - t, 3);
-      this.radius = startRadius * (1 - ease);
-      // Keep position fixed during ripple
+      this.radius = startR * (1 - ease);
       this.cx = sx;
       this.cy = sy;
       if (t < 1) {
-        requestAnimationFrame(animate);
+        this.rippleAnim = requestAnimationFrame(animate);
       } else {
         this.radius = 0;
         this.active = false;
         this.targetRadius = 0;
+        this.rippleAnim = null;
       }
     };
-    requestAnimationFrame(animate);
+    this.rippleAnim = requestAnimationFrame(animate);
   }
 
-  /* ----- Touch events (also trigger dismiss) ----- */
+  /* ---- Touch events ---- */
   _onTouch(e) {
     if (this.paused || !this.gyroActive) return;
     const touch = e.touches[0];
@@ -192,27 +245,31 @@ class HoverMaskHero {
     const rect = this.container.getBoundingClientRect();
     this.mx = touch.clientX - rect.left;
     this.my = touch.clientY - rect.top;
-    // Show mask at touch position
-    this.active = true;
-    this.targetRadius = this.maxRadius;
-    this._resetDismissTimer();
+    this._activateMask(this.tapRadius);
+    this._scheduleDismiss();
   }
 
-  _setup() {
-    this._size();
-    this._drawStatic();
-
-    this.container.addEventListener('mousemove', this._boundMove, { passive: true });
-    this.container.addEventListener('mouseenter', this._boundEnter, { passive: true });
-    this.container.addEventListener('mouseleave', this._boundLeave, { passive: true });
-
-    if (this.isMobile) {
-      this.container.addEventListener('touchstart', this._boundTouch, { passive: true });
-    }
-
-    this._loop();
+  /* ---- Mouse events (desktop) ---- */
+  _onMove(e) {
+    if (this.paused) return;
+    const rect = this.container.getBoundingClientRect();
+    this.mx = e.clientX - rect.left;
+    this.my = e.clientY - rect.top;
   }
 
+  _onEnter() {
+    if (this.paused) return;
+    this._activateMask(140);
+  }
+
+  _onLeave() {
+    if (this.paused) return;
+    if (this.useVideo) return;
+    this.active = false;
+    this.targetRadius = 0;
+  }
+
+  /* ---- Sizing ---- */
   _size() {
     const w = this.container.clientWidth;
     const h = this.container.clientHeight;
@@ -224,12 +281,6 @@ class HoverMaskHero {
 
   resize() {
     if (!this.ready || this.paused) return;
-    const wasMobile = this.isMobile;
-    this.isMobile = window.innerWidth < 768;
-    if (wasMobile !== this.isMobile) {
-      this.frontImg = document.querySelector(this.isMobile ? '.hero-img-front-mobile' : '.hero-img-front');
-      this.backImg = document.querySelector(this.isMobile ? '.hero-img-back-mobile' : '.hero-img-back');
-    }
     this._size();
     this._drawStatic();
   }
@@ -249,42 +300,27 @@ class HoverMaskHero {
 
   _drawStatic() {
     if (this.paused) return;
-    this.ctx.drawImage(this.frontImg, 0, 0, this.cw, this.ch);
+    const ctx = this.ctx;
+    if (this.useVideo) {
+      ctx.drawImage(this.frontVideo, 0, 0, this.cw, this.ch);
+    } else {
+      ctx.drawImage(this.frontImg, 0, 0, this.cw, this.ch);
+    }
   }
 
-  _onMove(e) {
-    if (this.paused) return;
-    const rect = this.container.getBoundingClientRect();
-    this.mx = e.clientX - rect.left;
-    this.my = e.clientY - rect.top;
-  }
-
-  _onEnter() {
-    if (this.paused) return;
-    this.active = true;
-    this.targetRadius = this.maxRadius;
-  }
-
-  _onLeave() {
-    if (this.paused) return;
-    if (this.isMobile) return;
-    this.active = false;
-    this.targetRadius = 0;
-  }
-
+  /* ---- Main loop ---- */
   _loop() {
-    if (this.paused) return;
     requestAnimationFrame(() => this._loop());
 
+    if (this.paused || !this.ready) return;
     if (this.container.getBoundingClientRect().bottom < 0) return;
 
-    this.cx += (this.mx - this.cx) * 0.15;
-    this.cy += (this.my - this.cy) * 0.15;
+    // Smooth lerp position
+    this.cx += (this.mx - this.cx) * 0.18;
+    this.cy += (this.my - this.cy) * 0.18;
 
-    // For mobile: radius is controlled by ripple, not lerp (only lerp up)
-    if (!this.isMobile) {
-      this.radius += (this.targetRadius - this.radius) * 0.12;
-    } else if (this.active && this.radius < this.targetRadius) {
+    // Smooth radius lerp (only lerp up; ripple controls the down)
+    if (this.active && this.radius < this.targetRadius) {
       this.radius += (this.targetRadius - this.radius) * 0.15;
     }
 
@@ -294,22 +330,33 @@ class HoverMaskHero {
   }
 
   _draw() {
-    if (this.paused) return;
     const ctx = this.ctx;
     const r = this.radius;
 
     ctx.clearRect(0, 0, this.cw, this.ch);
-    ctx.drawImage(this.frontImg, 0, 0, this.cw, this.ch);
 
+    // Draw front layer (always visible)
+    if (this.useVideo) {
+      ctx.drawImage(this.frontVideo, 0, 0, this.cw, this.ch);
+    } else {
+      ctx.drawImage(this.frontImg, 0, 0, this.cw, this.ch);
+    }
+
+    // Draw back layer through circle mask
     if (r > 1) {
       ctx.save();
       ctx.beginPath();
       ctx.arc(this.cx, this.cy, r, 0, Math.PI * 2);
       ctx.clip();
 
-      ctx.drawImage(this.backImg, 0, 0, this.cw, this.ch);
+      if (this.useVideo) {
+        ctx.drawImage(this.backVideo, 0, 0, this.cw, this.ch);
+      } else {
+        ctx.drawImage(this.backImg, 0, 0, this.cw, this.ch);
+      }
 
-      ctx.strokeStyle = 'rgba(255,255,255,0.15)';
+      // Subtle ring
+      ctx.strokeStyle = 'rgba(255,255,255,0.12)';
       ctx.lineWidth = 1.5;
       ctx.beginPath();
       ctx.arc(this.cx, this.cy, r - 1, 0, Math.PI * 2);
