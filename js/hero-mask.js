@@ -1,8 +1,7 @@
 /* ==========================================================================
    HoverMaskHero — Full-screen video + mask reveal
    Canvas composites two videos: front (base) + back (reveal via circle mask).
-   Desktop: images (unchanged). Mobile: videos + gyro + tap + auto-ripple.
-   Video loop crossfades through black. Tap freezes gyro for clean animation.
+   Desktop: images (unchanged). Mobile: videos + gyro + tap + water ripple.
    ========================================================================== */
 
 class HoverMaskHero {
@@ -24,7 +23,6 @@ class HoverMaskHero {
     this.active = false;
     this.gyroActive = false;
     this.dismissTimer = null;
-    this.rippleAnim = null;
     this.ready = false;
     this.paused = false;
 
@@ -34,6 +32,9 @@ class HoverMaskHero {
 
     // Tap freezes gyro
     this.gyroFrozen = false;
+
+    // Water ripple effect
+    this.ripples = [];
 
     this.tiltRadius = 80;
     this.tapRadius = 130;
@@ -179,7 +180,6 @@ class HoverMaskHero {
 
     this.gyroHandler = (e) => {
       if (e.gamma === null || e.beta === null) return;
-      // When gyro is frozen (after tap), ignore tilt
       if (this.gyroFrozen) return;
       if (!this.gyroCalibrated) {
         this.gammaRef = e.gamma;
@@ -206,7 +206,6 @@ class HoverMaskHero {
   }
 
   _resetDismiss() {
-    if (this.rippleAnim) { cancelAnimationFrame(this.rippleAnim); this.rippleAnim = null; }
     if (this.dismissTimer) clearTimeout(this.dismissTimer);
     this._scheduleDismiss();
   }
@@ -215,40 +214,38 @@ class HoverMaskHero {
     this.active = true;
     this.targetRadius = radius;
     if (this.dismissTimer) clearTimeout(this.dismissTimer);
-    if (this.rippleAnim) { cancelAnimationFrame(this.rippleAnim); this.rippleAnim = null; }
   }
 
-  /* ---- Ripple dismiss after 1.5s ---- */
+  /* ---- Water ripple dismiss after 1.5s ---- */
   _scheduleDismiss() {
     if (this.dismissTimer) clearTimeout(this.dismissTimer);
-    this.dismissTimer = setTimeout(() => { this._rippleDismiss(); }, 1500);
+    this.dismissTimer = setTimeout(() => { this._waterRippleDismiss(); }, 1500);
   }
 
-  _rippleDismiss() {
-    const sx = this.cx;
-    const sy = this.cy;
-    const startR = this.radius;
-    const duration = 500;
-    const start = performance.now();
+  _waterRippleDismiss() {
+    this.active = false;
+    this.targetRadius = 0;
 
-    const animate = (now) => {
-      const t = Math.min((now - start) / duration, 1);
-      const ease = 1 - Math.pow(1 - t, 3);
-      this.radius = startR * (1 - ease);
-      this.cx = sx;
-      this.cy = sy;
-      if (t < 1) {
-        this.rippleAnim = requestAnimationFrame(animate);
-      } else {
-        this.radius = 0;
-        this.active = false;
-        this.targetRadius = 0;
-        this.rippleAnim = null;
-        // After ripple completes, unfreeze gyro
-        this.gyroFrozen = false;
-      }
-    };
-    this.rippleAnim = requestAnimationFrame(animate);
+    const cx = this.cx;
+    const cy = this.cy;
+    const maxR = Math.max(this.cw, this.ch);
+
+    // Three expanding concentric rings
+    for (let i = 0; i < 3; i++) {
+      this.ripples.push({
+        cx, cy,
+        startRadius: Math.max(this.radius, 20),
+        maxRadius: maxR,
+        progress: i * 0.15, // stagger start
+        speed: 0.008 + i * 0.002,
+        maxOpacity: 0.5 - i * 0.12,
+      });
+    }
+
+    // After ripple animation done, unfreeze gyro
+    setTimeout(() => {
+      this.gyroFrozen = false;
+    }, 800);
   }
 
   /* ---- Touch events ---- */
@@ -259,8 +256,6 @@ class HoverMaskHero {
     const rect = this.container.getBoundingClientRect();
     this.mx = touch.clientX - rect.left;
     this.my = touch.clientY - rect.top;
-
-    // Freeze gyro so mask stays at tap position for clean animation
     this.gyroFrozen = true;
     this._activateMask(this.tapRadius);
     this._scheduleDismiss();
@@ -342,14 +337,12 @@ class HoverMaskHero {
     if (this.useVideo && this.frontVideo && this.backVideo) {
       const dur = this.frontVideo.duration;
       const ct = this.frontVideo.currentTime;
-      const fadeDuration = 0.4; // seconds
+      const fadeDuration = 0.4;
 
       if (dur > 0 && ct > dur - fadeDuration) {
-        // Fade OUT to black (last 0.4s of loop)
         this.videoOpacity = Math.max(0, (dur - ct) / fadeDuration);
         this.videoFading = true;
       } else if (ct < fadeDuration && this.videoFading) {
-        // Fade IN from black (first 0.4s of new loop)
         this.videoOpacity = Math.min(1, ct / fadeDuration);
       } else if (ct >= fadeDuration) {
         this.videoOpacity = 1;
@@ -357,16 +350,16 @@ class HoverMaskHero {
       }
     }
 
-    // Smooth lerp
+    // Smooth lerp for mask position
     this.cx += (this.mx - this.cx) * 0.18;
     this.cy += (this.my - this.cy) * 0.18;
 
+    // Radius lerp (only up — water ripple replaces the shrink)
     if (this.active && this.radius < this.targetRadius) {
       this.radius += (this.targetRadius - this.radius) * 0.15;
     }
 
-    if (Math.abs(this.radius) < 0.5 && !this.active) return;
-
+    // Always draw — ensures videos keep updating even when mask is inactive
     this._draw();
   }
 
@@ -376,9 +369,8 @@ class HoverMaskHero {
 
     ctx.clearRect(0, 0, this.cw, this.ch);
 
-    // Front layer with video opacity (for loop crossfade)
+    // ---- Composite front video (always drawn, video keeps updating) ----
     if (this.useVideo && this.videoOpacity < 1) {
-      // Composite front video at reduced opacity over black
       ctx.fillStyle = '#000';
       ctx.fillRect(0, 0, this.cw, this.ch);
       ctx.globalAlpha = this.videoOpacity;
@@ -388,7 +380,7 @@ class HoverMaskHero {
       ctx.drawImage(this._getFrontSource(), 0, 0, this.cw, this.ch);
     }
 
-    // Back layer through circle mask (same opacity treatment)
+    // ---- Active circle mask ----
     if (r > 1) {
       ctx.save();
       ctx.beginPath();
@@ -408,8 +400,27 @@ class HoverMaskHero {
       ctx.beginPath();
       ctx.arc(this.cx, this.cy, r - 1, 0, Math.PI * 2);
       ctx.stroke();
-
       ctx.restore();
+    }
+
+    // ---- Water ripple rings ----
+    for (let i = this.ripples.length - 1; i >= 0; i--) {
+      const rip = this.ripples[i];
+      rip.progress += rip.speed;
+
+      if (rip.progress >= 1) {
+        this.ripples.splice(i, 1);
+        continue;
+      }
+
+      const currentR = rip.startRadius + (rip.maxRadius - rip.startRadius) * rip.progress;
+      const opacity = rip.maxOpacity * (1 - rip.progress);
+
+      ctx.beginPath();
+      ctx.arc(rip.cx, rip.cy, currentR, 0, Math.PI * 2);
+      ctx.strokeStyle = `rgba(255,255,255,${opacity})`;
+      ctx.lineWidth = 1.5 * (1 - rip.progress * 0.5);
+      ctx.stroke();
     }
   }
 
