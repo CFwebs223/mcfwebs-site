@@ -54,39 +54,43 @@ class HoverMaskHero {
   }
 
   _initGyro() {
-    // Store initial orientation as reference
     this.gammaRef = 0;
     this.betaRef = 0;
     this.gyroCalibrated = false;
+    this.gyroHandler = null;
 
-    // On mobile, activate the mask immediately so tilt reveals the back image
+    // On mobile, activate the mask immediately
     this.active = true;
     this.targetRadius = this.maxRadius;
 
-    const handler = (e) => {
+    this.gyroHandler = (e) => {
       if (e.gamma === null || e.beta === null) return;
       if (!this.gyroCalibrated) {
         this.gammaRef = e.gamma;
         this.betaRef = e.beta;
         this.gyroCalibrated = true;
       }
-      // Map tilt to canvas position
-      const gamma = e.gamma - this.gammaRef; // left-right tilt
-      const beta = e.beta - this.betaRef;     // forward-back tilt
+      const gamma = e.gamma - this.gammaRef;
+      const beta = e.beta - this.betaRef;
       const rect = this.container.getBoundingClientRect();
-      const cx = rect.width / 2 + gamma * 6;
-      const cy = rect.height / 2 + beta * 6;
+      const sensitivity = 8;
+      const cx = rect.width / 2 + gamma * sensitivity;
+      const cy = rect.height / 2 + beta * sensitivity;
       this.mx = Math.max(0, Math.min(rect.width, cx));
       this.my = Math.max(0, Math.min(rect.height, cy));
     };
 
-    // Request permission for iOS 13+
-    if (typeof DeviceOrientationEvent !== 'undefined' && typeof DeviceOrientationEvent.requestPermission === 'function') {
-      DeviceOrientationEvent.requestPermission().then((state) => {
-        if (state === 'granted') window.addEventListener('deviceorientation', handler, { passive: true });
-      }).catch(() => {});
+    // Platform detection: iOS 13+ requires permission via user gesture
+    const needsPermission = typeof DeviceOrientationEvent !== 'undefined' && typeof DeviceOrientationEvent.requestPermission === 'function';
+
+    if (needsPermission) {
+      // Wait for app.js to grant permission via touchstart
+      window.addEventListener('gyro-permission-granted', () => {
+        window.addEventListener('deviceorientation', this.gyroHandler, { passive: true });
+      }, { once: true });
     } else {
-      window.addEventListener('deviceorientation', handler, { passive: true });
+      // Android / desktop: attach immediately
+      window.addEventListener('deviceorientation', this.gyroHandler, { passive: true });
     }
   }
 

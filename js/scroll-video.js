@@ -43,16 +43,18 @@ class ScrollVideo {
       const isMobile = window.innerWidth < 768;
       const videoBase = isMobile ? 'videos/scroll-koi-mobile' : 'videos/scroll-koi';
 
-      // Add multiple sources: webm first for performance, mp4 as fallback
-      const webmSrc = document.createElement('source');
-      webmSrc.src = videoBase + '.webm';
-      webmSrc.type = 'video/webm';
-      this.video.appendChild(webmSrc);
-
+      // Mobile has mp4 only (no webm), desktop has both
       const mp4Src = document.createElement('source');
       mp4Src.src = videoBase + '.mp4';
       mp4Src.type = 'video/mp4';
       this.video.appendChild(mp4Src);
+
+      if (!isMobile) {
+        const webmSrc = document.createElement('source');
+        webmSrc.src = videoBase + '.webm';
+        webmSrc.type = 'video/webm';
+        this.video.appendChild(webmSrc);
+      }
 
       await new Promise((resolve, reject) => {
         this.video.addEventListener('loadedmetadata', resolve, { once: true });
