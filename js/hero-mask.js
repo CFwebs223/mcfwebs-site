@@ -403,29 +403,30 @@ class HoverMaskHero {
       return;
     }
 
-    // Draw front, then overlay back image at each particle position
-    ctx.drawImage(front, 0, 0, this.cw, this.ch);
+    // Draw back image as base
+    ctx.drawImage(back, 0, 0, this.cw, this.ch);
 
-    // Draw back video clipped to each particle position
-    // Use destination-out to remove particle-shaped holes from front,
-    // then destination-over to place back underneath
-    ctx.globalCompositeOperation = 'destination-out';
+    // Draw front image, then punch each particle shape through
+    // using save/clip(draw back)/restore per particle
     for (const p of this.particles) {
       const d = Math.sqrt((p.x - this.pTargetX) ** 2 + (p.y - this.pTargetY) ** 2);
       const maxD = this.pRadius * 2.5;
       if (d < maxD) {
-        ctx.beginPath();
-        ctx.arc(p.x, p.y, p.sz * (1 - d / maxD * 0.3), 0, Math.PI * 2);
-        ctx.fill();
+        const r = p.sz * (1 - d / maxD * 0.3);
+        if (r > 1) {
+          ctx.save();
+          ctx.beginPath();
+          ctx.arc(p.x, p.y, r, 0, Math.PI * 2);
+          ctx.clip();
+          ctx.drawImage(front, 0, 0, this.cw, this.ch);
+          ctx.restore();
+        }
       }
     }
-    ctx.globalCompositeOperation = 'destination-over';
-    ctx.drawImage(back, 0, 0, this.cw, this.ch);
-    ctx.globalCompositeOperation = 'source-over';
 
     // Tiny glow
     const g = ctx.createRadialGradient(this.pTargetX, this.pTargetY, 0, this.pTargetX, this.pTargetY, this.pRadius * 0.5);
-    g.addColorStop(0, 'rgba(188,0,45,0.05)');
+    g.addColorStop(0, 'rgba(188,0,45,0.06)');
     g.addColorStop(1, 'rgba(188,0,45,0)');
     ctx.fillStyle = g;
     ctx.fillRect(0, 0, this.cw, this.ch);
