@@ -22,7 +22,7 @@ class HoverMaskHero {
     this.radius = 0;
     this.targetRadius = 0;
     this.active = false;
-    this.maxRadius = 140;
+    this.maxRadius = this.isMobile ? 200 : 140;
     this.minRadius = 60;
     this.loaded = 0;
     this.ready = false;
@@ -31,6 +31,11 @@ class HoverMaskHero {
     this._boundMove = (e) => this._onMove(e);
     this._boundEnter = () => this._onEnter();
     this._boundLeave = () => this._onLeave();
+
+    // Mobile: use gyroscope for tilt-based mask position
+    if (this.isMobile) {
+      this._initGyro();
+    }
 
     this._loadImages();
   }
@@ -46,6 +51,43 @@ class HoverMaskHero {
     };
     if (this.frontImg && this.frontImg.complete) check(); else if (this.frontImg) this.frontImg.onload = check;
     if (this.backImg && this.backImg.complete) check(); else if (this.backImg) this.backImg.onload = check;
+  }
+
+  _initGyro() {
+    // Store initial orientation as reference
+    this.gammaRef = 0;
+    this.betaRef = 0;
+    this.gyroCalibrated = false;
+
+    // On mobile, activate the mask immediately so tilt reveals the back image
+    this.active = true;
+    this.targetRadius = this.maxRadius;
+
+    const handler = (e) => {
+      if (e.gamma === null || e.beta === null) return;
+      if (!this.gyroCalibrated) {
+        this.gammaRef = e.gamma;
+        this.betaRef = e.beta;
+        this.gyroCalibrated = true;
+      }
+      // Map tilt to canvas position
+      const gamma = e.gamma - this.gammaRef; // left-right tilt
+      const beta = e.beta - this.betaRef;     // forward-back tilt
+      const rect = this.container.getBoundingClientRect();
+      const cx = rect.width / 2 + gamma * 6;
+      const cy = rect.height / 2 + beta * 6;
+      this.mx = Math.max(0, Math.min(rect.width, cx));
+      this.my = Math.max(0, Math.min(rect.height, cy));
+    };
+
+    // Request permission for iOS 13+
+    if (typeof DeviceOrientationEvent !== 'undefined' && typeof DeviceOrientationEvent.requestPermission === 'function') {
+      DeviceOrientationEvent.requestPermission().then((state) => {
+        if (state === 'granted') window.addEventListener('deviceorientation', handler, { passive: true });
+      }).catch(() => {});
+    } else {
+      window.addEventListener('deviceorientation', handler, { passive: true });
+    }
   }
 
   _setup() {
@@ -116,6 +158,8 @@ class HoverMaskHero {
 
   _onLeave() {
     if (this.paused) return;
+    // On mobile the gyroscope keeps it active
+    if (this.isMobile) return;
     this.active = false;
     this.targetRadius = 0;
   }
