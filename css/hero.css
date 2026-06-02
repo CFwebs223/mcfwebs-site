@@ -36,6 +36,14 @@
   user-select: none;
 }
 
+/* Hide desktop images on mobile, mobile images on desktop */
+@media (max-width: 767px) {
+  .desktop-hero-img { display: none !important; }
+}
+@media (min-width: 768px) {
+  .mobile-hero-img { display: none !important; }
+}
+
 /* Subtle slow zoom on back image */
 .hero-img-back {
   animation: heroZoom 20s ease-in-out infinite alternate;

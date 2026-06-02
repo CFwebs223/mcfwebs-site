@@ -105,12 +105,12 @@
   <!-- ==================== HOVER MASK HERO ==================== -->
   <section class="hero" id="hero" aria-label="Hero">
     <div class="hero-images">
-      <!-- Desktop (16:9) -->
-      <img class="hero-img hero-img-front" src="images/hero-front.jpg" alt="" aria-hidden="true">
-      <img class="hero-img hero-img-back" src="images/hero-back.jpg" alt="" aria-hidden="true">
-      <!-- Mobile (9:16) — hidden on desktop, shown via JS -->
-      <img class="hero-img hero-img-front-mobile" src="images/hero-front-mobile.jpg" alt="" aria-hidden="true" style="display:none;">
-      <img class="hero-img hero-img-back-mobile" src="images/hero-back-mobile.jpg" alt="" aria-hidden="true" style="display:none;">
+      <!-- Desktop (16:9) — hidden on mobile via media query -->
+      <img class="hero-img hero-img-front desktop-hero-img" src="images/hero-front.jpg" alt="" aria-hidden="true">
+      <img class="hero-img hero-img-back desktop-hero-img" src="images/hero-back.jpg" alt="" aria-hidden="true">
+      <!-- Mobile (9:16) — hidden on desktop via media query -->
+      <img class="hero-img hero-img-front-mobile mobile-hero-img" src="images/hero-front-mobile.jpg" alt="" aria-hidden="true">
+      <img class="hero-img hero-img-back-mobile mobile-hero-img" src="images/hero-back-mobile.jpg" alt="" aria-hidden="true">
     </div>
     <canvas id="hero-mask-canvas" aria-hidden="true"></canvas>
 

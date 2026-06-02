@@ -65,6 +65,7 @@ class HoverMaskHero {
     this.frontVideo.loop = true;
     this.frontVideo.playsInline = true;
     this.frontVideo.preload = 'auto';
+    this.frontVideo.crossOrigin = 'anonymous';
     this.frontVideo.src = 'videos/hero-front-mobile.mp4';
 
     this.backVideo = document.createElement('video');
@@ -72,25 +73,47 @@ class HoverMaskHero {
     this.backVideo.loop = true;
     this.backVideo.playsInline = true;
     this.backVideo.preload = 'auto';
+    this.backVideo.crossOrigin = 'anonymous';
     this.backVideo.src = 'videos/hero-back-mobile.mp4';
 
-    let loaded = 0;
-    const check = () => {
-      loaded++;
-      if (loaded >= 2) {
-        this.frontVideo.play().catch(() => {});
-        this.backVideo.play().catch(() => {});
-        this.ready = true;
-        this._createGyroOverlay();
-        this._setup();
+    let frontReady = false;
+    let backReady = false;
+
+    // Use mobile poster images as canvas background until videos are ready
+    this.fallbackFront = document.querySelector('.hero-img-front-mobile');
+    this.fallbackBack = document.querySelector('.hero-img-back-mobile');
+
+    // Fire setup early so canvas starts drawing fallback images
+    setTimeout(() => {
+      if (!this.ready) {
+        this._setup(); // Start the loop with fallback images
       }
+    }, 100);
+
+    const bothReady = () => {
+      if (!frontReady || !backReady) return;
+
+      this.ready = true;
+      this.frontVideo.play().catch(() => {});
+      this.backVideo.play().catch(() => {});
+      this._createGyroOverlay();
     };
 
-    this.frontVideo.addEventListener('loadeddata', check, { once: true });
-    this.backVideo.addEventListener('loadeddata', check, { once: true });
-    // Fallback if already loaded
-    if (this.frontVideo.readyState >= 2) check();
-    if (this.backVideo.readyState >= 2) check();
+    this.frontVideo.addEventListener('canplay', () => { frontReady = true; bothReady(); }, { once: true });
+    this.backVideo.addEventListener('canplay', () => { backReady = true; bothReady(); }, { once: true });
+
+    this.frontVideo.load();
+    this.backVideo.load();
+
+    // Safety timeout: if videos take >5s, fall back to mobile images
+    setTimeout(() => {
+      if (!this.ready) {
+        this.useVideo = false;
+        this.frontImg = document.querySelector('.hero-img-front-mobile');
+        this.backImg = document.querySelector('.hero-img-back-mobile');
+        this._loadImages();
+      }
+    }, 5000);
   }
 
   _setup() {
@@ -298,14 +321,21 @@ class HoverMaskHero {
     this._loop();
   }
 
+  _getFrontSource() {
+    if (this.useVideo && this.frontVideo && this.frontVideo.readyState >= 2) return this.frontVideo;
+    if (this.fallbackFront) return this.fallbackFront;
+    return this.frontImg;
+  }
+
+  _getBackSource() {
+    if (this.useVideo && this.backVideo && this.backVideo.readyState >= 2) return this.backVideo;
+    if (this.fallbackBack) return this.fallbackBack;
+    return this.backImg;
+  }
+
   _drawStatic() {
     if (this.paused) return;
-    const ctx = this.ctx;
-    if (this.useVideo) {
-      ctx.drawImage(this.frontVideo, 0, 0, this.cw, this.ch);
-    } else {
-      ctx.drawImage(this.frontImg, 0, 0, this.cw, this.ch);
-    }
+    this.ctx.drawImage(this._getFrontSource(), 0, 0, this.cw, this.ch);
   }
 
   /* ---- Main loop ---- */
@@ -335,27 +365,18 @@ class HoverMaskHero {
 
     ctx.clearRect(0, 0, this.cw, this.ch);
 
-    // Draw front layer (always visible)
-    if (this.useVideo) {
-      ctx.drawImage(this.frontVideo, 0, 0, this.cw, this.ch);
-    } else {
-      ctx.drawImage(this.frontImg, 0, 0, this.cw, this.ch);
-    }
+    // Front layer (always visible) — fallbacks gracefully from video → mobile img → desktop img
+    ctx.drawImage(this._getFrontSource(), 0, 0, this.cw, this.ch);
 
-    // Draw back layer through circle mask
+    // Back layer through circle mask
     if (r > 1) {
       ctx.save();
       ctx.beginPath();
       ctx.arc(this.cx, this.cy, r, 0, Math.PI * 2);
       ctx.clip();
 
-      if (this.useVideo) {
-        ctx.drawImage(this.backVideo, 0, 0, this.cw, this.ch);
-      } else {
-        ctx.drawImage(this.backImg, 0, 0, this.cw, this.ch);
-      }
+      ctx.drawImage(this._getBackSource(), 0, 0, this.cw, this.ch);
 
-      // Subtle ring
       ctx.strokeStyle = 'rgba(255,255,255,0.12)';
       ctx.lineWidth = 1.5;
       ctx.beginPath();
