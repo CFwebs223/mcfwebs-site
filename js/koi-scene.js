@@ -17,6 +17,9 @@ class KoiScene {
     this.videoSection = document.querySelector('.scroll-video');
     this.canvasOpacity = 0;
 
+    this.ripples = [];
+    this.rippleGeo = null;
+
     this._buildCanvas();
     this._buildScene();
     this._buildCurve();
@@ -98,12 +101,13 @@ class KoiScene {
   _makeKoiMesh(paletteIndex) {
     const group = new THREE.Group();
 
-    // Traditional koi palettes: white body with red/orange + black
-    // patches (kohaku / sanke-style) — kept simple and stylized.
+    // Traditional koi palettes: white body with red + black patches
+    // (kohaku / sanke-style) — the reds echo the site's own crimson
+    // accent rather than drifting toward orange.
     const palettes = [
-      { body: 0xfdfaf3, patch: 0xd1442f, spot: 0x232323 },
-      { body: 0xfaf6ec, patch: 0xe0672c, spot: 0x1c1c1c },
-      { body: 0xf7f3e8, patch: 0xc93a2e, spot: 0x2a2a2a },
+      { body: 0xfdfaf3, patch: 0xbc002d, spot: 0x232323 },
+      { body: 0xfaf6ec, patch: 0xa8082a, spot: 0x1c1c1c },
+      { body: 0xf7f3e8, patch: 0xc41e3a, spot: 0x2a2a2a },
     ];
     const c = palettes[paletteIndex % palettes.length];
     const bodyColor = new THREE.Color(c.body);
@@ -283,6 +287,18 @@ class KoiScene {
     group.add(tailPivot);
 
     group.userData.tailPivot = tailPivot;
+
+    // Soft water-glow disc beneath the koi — a cheap "displacing the
+    // water" cue that reads as swimming in something rather than
+    // floating on a blank background.
+    const glow = new THREE.Mesh(
+      new THREE.CircleGeometry(0.85, 24),
+      new THREE.MeshBasicMaterial({ color: 0xcdeaf5, transparent: true, opacity: 0.16, side: THREE.DoubleSide })
+    );
+    glow.position.z = -0.3;
+    group.add(glow);
+    group.userData.glow = glow;
+
     group.scale.setScalar(85);
 
     return group;
@@ -327,6 +343,8 @@ class KoiScene {
   }
 
   _buildKoi() {
+    this.rippleGeo = new THREE.RingGeometry(0.7, 1, 32);
+
     const count = 3;
     this.koi = [];
     for (let i = 0; i < count; i++) {
@@ -337,7 +355,36 @@ class KoiScene {
         phase: i / count,
         swimSeed: Math.random() * Math.PI * 2,
         bobSeed: Math.random() * Math.PI * 2,
+        nextRipple: Math.random() * 2,
       });
+    }
+  }
+
+  _spawnRipple(x, y, scale) {
+    const mesh = new THREE.Mesh(
+      this.rippleGeo,
+      new THREE.MeshBasicMaterial({ color: 0xbfe6f2, transparent: true, opacity: 0.3, side: THREE.DoubleSide })
+    );
+    mesh.position.set(x, y, -1);
+    mesh.scale.setScalar(14 * scale);
+    this.scene.add(mesh);
+    this.ripples.push({ mesh, start: this.clock.elapsedTime, baseScale: 14 * scale });
+  }
+
+  _updateRipples(t) {
+    for (let i = this.ripples.length - 1; i >= 0; i--) {
+      const r = this.ripples[i];
+      const age = t - r.start;
+      const duration = 2.4;
+      if (age > duration) {
+        this.scene.remove(r.mesh);
+        r.mesh.material.dispose();
+        this.ripples.splice(i, 1);
+        continue;
+      }
+      const p = age / duration;
+      r.mesh.scale.setScalar(r.baseScale * (1 + p * 3.4));
+      r.mesh.material.opacity = 0.3 * (1 - p);
     }
   }
 
@@ -427,8 +474,19 @@ class KoiScene {
       k.mesh.rotation.z = angle;
 
       this._updateBodyWave(k.mesh, t + k.swimSeed, ampScale);
+
+      // Gentle glow pulse — a soft cue that the koi is displacing water.
+      const glow = k.mesh.userData.glow;
+      glow.material.opacity = 0.13 + Math.sin(t * 0.7 + k.bobSeed) * 0.04;
+
+      // Periodic ripple ring expanding outward from the koi's position.
+      if (t > k.nextRipple) {
+        this._spawnRipple(x, y + bob, responsiveScale);
+        k.nextRipple = t + 1.6 + Math.random() * 1.0;
+      }
     });
 
+    this._updateRipples(t);
     this.renderer.render(this.scene, this.camera);
   }
 }

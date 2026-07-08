@@ -364,6 +364,14 @@ body::after {
   transition: stroke-dashoffset 0.1s linear;
 }
 
+/* Keep real content above the ambient koi canvas (z-index:3) so the
+   fish swim behind text, buttons, and forms instead of over them —
+   only the hero and koi-video pond sections intentionally sit below it. */
+#work, #capabilities, #process, #results, #contact, .footer {
+  position: relative;
+  z-index: 4;
+}
+
 /* ==================== FEATURED WORK ==================== */
 .section-work {
   padding-bottom: var(--section-gap);
@@ -1028,10 +1036,37 @@ body::after {
   .project-spread:hover .project-accent { width: 0; }
 }
 
+/* ==================== INK DRIP HOVER ==================== */
+.ink-hover-target {
+  position: relative;
+}
+
+.ink-drip {
+  position: absolute;
+  width: 12px;
+  height: 12px;
+  margin-left: -6px;
+  margin-top: -6px;
+  border-radius: 50%;
+  background: radial-gradient(circle, rgba(26, 26, 26, 0.4) 0%, rgba(26, 26, 26, 0.16) 55%, transparent 75%);
+  filter: blur(3px);
+  mix-blend-mode: multiply;
+  pointer-events: none;
+  z-index: 5;
+  animation: inkDripFall 1.3s var(--ease-out) forwards;
+}
+
+@keyframes inkDripFall {
+  0% { opacity: 0; transform: scale(0.4) translateY(0); }
+  15% { opacity: 0.6; transform: scale(1) translateY(2px); }
+  100% { opacity: 0; transform: scale(1.7) translateY(36px); }
+}
+
 @media (prefers-reduced-motion: reduce) {
   .reveal, .reveal-left, .reveal-right {
     opacity: 1; transform: none; transition: none;
   }
   .hero-scroll-line { animation: none; }
+  .ink-drip { display: none; }
   * { animation-duration: 0.01ms !important; transition-duration: 0.01ms !important; }
 }
