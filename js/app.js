@@ -82,7 +82,12 @@ class MCFWebs {
       anchor.addEventListener('click', (e) => {
         e.preventDefault();
         const target = document.querySelector(anchor.getAttribute('href'));
-        if (target) {
+        if (!target) return;
+        // Lenis owns scrolling when active — native smooth scrollIntoView
+        // fights it and causes stutter.
+        if (window.__lenis) {
+          window.__lenis.scrollTo(target);
+        } else {
           target.scrollIntoView({ behavior: 'smooth', block: 'start' });
         }
       });

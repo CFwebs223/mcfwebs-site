@@ -11,6 +11,12 @@ class KoiScene {
     this.scrollProgress = 0;
     this.clock = new THREE.Clock();
 
+    // The scroll-koi video section owns the koi visual while it's on
+    // screen — the ambient vector koi fade out over it and take over for
+    // the rest of the page.
+    this.videoSection = document.querySelector('.scroll-video');
+    this.canvasOpacity = 0;
+
     this._buildCanvas();
     this._buildScene();
     this._buildCurve();
@@ -180,6 +186,20 @@ class KoiScene {
 
     const dt = Math.min(this.clock.getDelta(), 0.1);
     const t = this.clock.elapsedTime;
+
+    // Fade out while the koi-video narrative covers the viewport.
+    let targetOpacity = 1;
+    if (this.videoSection) {
+      const rect = this.videoSection.getBoundingClientRect();
+      const covering = rect.top < this.viewH * 0.6 && rect.bottom > this.viewH * 0.4;
+      targetOpacity = covering ? 0 : 1;
+    }
+    this.canvasOpacity += (targetOpacity - this.canvasOpacity) * Math.min(1, dt * 4);
+    this.canvas.style.opacity = this.canvasOpacity.toFixed(3);
+    if (this.canvasOpacity < 0.01) {
+      // Nothing visible — skip the render entirely.
+      return;
+    }
 
     // A full circuit every ~2.2 viewport-heights of scroll, so the koi keep
     // actively swimming across a long page rather than settling near the
