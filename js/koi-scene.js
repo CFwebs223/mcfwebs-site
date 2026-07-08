@@ -60,80 +60,172 @@ class KoiScene {
     this.curve = new THREE.CatmullRomCurve3(pts, true, 'catmullrom', 0.5);
   }
 
+  /* Body outline sampled along its length, nose (x=1) to tail stalk
+     (x=-1). `band` assigns each cross-section a colour band so the
+     patches ripple with the body instead of floating on top of it. */
+  _bodyProfile() {
+    return [
+      { x: 1.00, w: 0.00, band: 'body' },
+      { x: 0.90, w: 0.17, band: 'body' },
+      { x: 0.74, w: 0.27, band: 'body' },
+      { x: 0.52, w: 0.31, band: 'patch' },
+      { x: 0.28, w: 0.30, band: 'patch' },
+      { x: 0.04, w: 0.27, band: 'body' },
+      { x: -0.22, w: 0.23, band: 'spot' },
+      { x: -0.46, w: 0.18, band: 'spot' },
+      { x: -0.66, w: 0.12, band: 'body' },
+      { x: -0.84, w: 0.06, band: 'body' },
+      { x: -0.97, w: 0.02, band: 'body' },
+    ];
+  }
+
   _makeKoiMesh(paletteIndex) {
     const group = new THREE.Group();
 
-    // Traditional koi palettes: white body with red/orange (kohaku) or
-    // black+orange (showa-ish) patches — kept simple and stylized.
+    // Traditional koi palettes: white body with red/orange + black
+    // patches (kohaku / sanke-style) — kept simple and stylized.
     const palettes = [
-      { body: 0xfdfaf3, patch: 0xd1442f, spot: 0x1c1c1c },
-      { body: 0xfaf6ec, patch: 0xe0672c, spot: 0x222222 },
+      { body: 0xfdfaf3, patch: 0xd1442f, spot: 0x232323 },
+      { body: 0xfaf6ec, patch: 0xe0672c, spot: 0x1c1c1c },
       { body: 0xf7f3e8, patch: 0xc93a2e, spot: 0x2a2a2a },
     ];
     const c = palettes[paletteIndex % palettes.length];
+    const colorFor = { body: new THREE.Color(c.body), patch: new THREE.Color(c.patch), spot: new THREE.Color(c.spot) };
 
-    // Body — a simple teardrop silhouette via a Shape.
-    const bodyShape = new THREE.Shape();
-    bodyShape.moveTo(0, 16);
-    bodyShape.bezierCurveTo(10, 15, 15, 6, 15, 0);
-    bodyShape.bezierCurveTo(15, -7, 9, -15, -2, -18);
-    bodyShape.bezierCurveTo(-10, -15, -14, -6, -14, 0);
-    bodyShape.bezierCurveTo(-14, 6, -9, 15, 0, 16);
-    const bodyGeo = new THREE.ShapeGeometry(bodyShape);
-    const bodyMat = new THREE.MeshBasicMaterial({ color: c.body, side: THREE.DoubleSide });
-    const body = new THREE.Mesh(bodyGeo, bodyMat);
+    const profile = this._bodyProfile();
+    const n = profile.length;
+
+    // Two vertices (top/bottom) per profile sample.
+    const positions = new Float32Array(n * 2 * 3);
+    const colors = new Float32Array(n * 2 * 3);
+    const baseX = new Float32Array(n);
+    const baseW = new Float32Array(n);
+
+    profile.forEach((p, i) => {
+      baseX[i] = p.x;
+      baseW[i] = p.w;
+      const col = colorFor[p.band];
+      const ti = i * 2 * 3;
+      positions[ti] = p.x; positions[ti + 1] = p.w; positions[ti + 2] = 0;
+      positions[ti + 3] = p.x; positions[ti + 4] = -p.w; positions[ti + 5] = 0;
+      colors[ti] = col.r; colors[ti + 1] = col.g; colors[ti + 2] = col.b;
+      colors[ti + 3] = col.r; colors[ti + 4] = col.g; colors[ti + 5] = col.b;
+    });
+
+    const indices = [];
+    for (let i = 0; i < n - 1; i++) {
+      const top0 = i * 2, bot0 = i * 2 + 1, top1 = (i + 1) * 2, bot1 = (i + 1) * 2 + 1;
+      indices.push(top0, bot0, top1, bot0, bot1, top1);
+    }
+
+    const bodyGeo = new THREE.BufferGeometry();
+    bodyGeo.setAttribute('position', new THREE.BufferAttribute(positions, 3));
+    bodyGeo.setAttribute('color', new THREE.BufferAttribute(colors, 3));
+    bodyGeo.setIndex(indices);
+
+    const body = new THREE.Mesh(
+      bodyGeo,
+      new THREE.MeshBasicMaterial({ vertexColors: true, side: THREE.DoubleSide })
+    );
     group.add(body);
 
-    // Thin dark outline so the koi reads against any backdrop.
-    const outlineGeo = new THREE.EdgesGeometry(bodyGeo);
-    const outline = new THREE.LineSegments(
-      outlineGeo,
-      new THREE.LineBasicMaterial({ color: 0x1a1a1a, transparent: true, opacity: 0.35 })
+    group.userData.bodyGeo = bodyGeo;
+    group.userData.baseX = baseX;
+    group.userData.baseW = baseW;
+
+    // Thin dark outline so the koi reads clearly against any backdrop.
+    const outline = new THREE.LineLoop(
+      new THREE.BufferGeometry(),
+      new THREE.LineBasicMaterial({ color: 0x1a1a1a, transparent: true, opacity: 0.4 })
     );
-    outline.position.z = 0.05;
+    outline.position.z = 0.02;
     group.add(outline);
+    group.userData.outline = outline;
 
-    // Colour patches (simple blobs).
-    const patchShape1 = new THREE.Shape();
-    patchShape1.absarc(3, 6, 6, 0, Math.PI * 2, false);
-    const patch1 = new THREE.Mesh(
-      new THREE.ShapeGeometry(patchShape1),
-      new THREE.MeshBasicMaterial({ color: c.patch, side: THREE.DoubleSide })
-    );
-    patch1.position.z = 0.1;
-    group.add(patch1);
+    // Eyes — sit near the nose where the body wave is near-zero, so they
+    // don't need to deform with it.
+    [1, -1].forEach((side) => {
+      const eye = new THREE.Mesh(
+        new THREE.CircleGeometry(0.02, 10),
+        new THREE.MeshBasicMaterial({ color: 0x1a1a1a })
+      );
+      eye.position.set(0.82, side * 0.09, 0.15);
+      group.add(eye);
+    });
 
-    const patchShape2 = new THREE.Shape();
-    patchShape2.absarc(-4, -6, 5, 0, Math.PI * 2, false);
-    const patch2 = new THREE.Mesh(
-      new THREE.ShapeGeometry(patchShape2),
-      new THREE.MeshBasicMaterial({ color: c.spot, side: THREE.DoubleSide })
-    );
-    patch2.position.z = 0.1;
-    group.add(patch2);
+    // Pectoral fins — small, angled near the head.
+    [1, -1].forEach((side) => {
+      const finShape = new THREE.Shape();
+      finShape.moveTo(0, 0);
+      finShape.quadraticCurveTo(-0.05, side * 0.18, -0.2, side * 0.2);
+      finShape.quadraticCurveTo(-0.08, side * 0.06, 0, 0);
+      const fin = new THREE.Mesh(
+        new THREE.ShapeGeometry(finShape),
+        new THREE.MeshBasicMaterial({ color: c.body, transparent: true, opacity: 0.8, side: THREE.DoubleSide })
+      );
+      fin.position.set(0.5, side * 0.2, -0.05);
+      group.add(fin);
+    });
 
-    // Tail fin — a separate mesh pivoted at the body's rear so it can wave.
+    // Tail fin — pivoted at the tail stalk, driven by the body wave's
+    // end phase each frame so it reads as a continuation of the ripple.
     const tailShape = new THREE.Shape();
-    tailShape.moveTo(0, 5);
-    tailShape.lineTo(14, 10);
-    tailShape.lineTo(10, 0);
-    tailShape.lineTo(14, -10);
-    tailShape.lineTo(0, -5);
+    tailShape.moveTo(0, 0.03);
+    tailShape.lineTo(-0.32, 0.22);
+    tailShape.lineTo(-0.22, 0);
+    tailShape.lineTo(-0.32, -0.22);
+    tailShape.lineTo(0, -0.03);
     tailShape.closePath();
     const tailPivot = new THREE.Group();
-    tailPivot.position.set(-14, 0, 0);
+    tailPivot.position.set(-0.97, 0, 0);
     const tail = new THREE.Mesh(
       new THREE.ShapeGeometry(tailShape),
       new THREE.MeshBasicMaterial({ color: c.body, side: THREE.DoubleSide, transparent: true, opacity: 0.92 })
     );
-    tail.position.x = -1;
     tailPivot.add(tail);
     group.add(tailPivot);
 
     group.userData.tailPivot = tailPivot;
-    group.scale.setScalar(1.4);
+    group.scale.setScalar(75);
 
     return group;
+  }
+
+  /* Traveling lateral wave — near-zero at the nose, growing toward the
+     tail, animated over time. This is what makes it read as swimming
+     rather than a rigid shape with a flapping tail. */
+  _updateBodyWave(group, t, ampScale) {
+    const { bodyGeo, baseX, baseW, outline, tailPivot } = group.userData;
+    const positions = bodyGeo.attributes.position.array;
+    const n = baseX.length;
+
+    const waveK = Math.PI * 1.15;
+    const waveSpeed = 3.4;
+    const amplitude = 0.09 * ampScale;
+
+    const dys = new Float32Array(n);
+    for (let i = 0; i < n; i++) {
+      const x = baseX[i];
+      const growth = Math.pow(Math.max(0, (1 - x) / 2), 1.3);
+      const dy = amplitude * growth * Math.sin(x * waveK - t * waveSpeed);
+      dys[i] = dy;
+
+      const ti = i * 2 * 3;
+      positions[ti + 1] = baseW[i] + dy;
+      positions[ti + 4] = -baseW[i] + dy;
+    }
+    const tailDy = dys[n - 1];
+
+    const outlinePts = [];
+    for (let i = 0; i < n; i++) outlinePts.push(new THREE.Vector3(baseX[i], baseW[i] + dys[i], 0));
+    for (let i = n - 1; i >= 0; i--) outlinePts.push(new THREE.Vector3(baseX[i], -baseW[i] + dys[i], 0));
+
+    bodyGeo.attributes.position.needsUpdate = true;
+    outline.geometry.setFromPoints(outlinePts);
+
+    // Tail fin follows the body wave's value at the tail, plus its own
+    // faster flick on top for a livelier finish.
+    tailPivot.rotation.z = tailDy * 2.2 + Math.sin(t * waveSpeed * 1.3) * 0.12 * ampScale;
   }
 
   _buildKoi() {
@@ -212,7 +304,8 @@ class KoiScene {
     const idleSpeed = this.prefersReducedMotion ? 0.004 : 0.02;
     this._idleOffset = (this._idleOffset || 0) + dt * idleSpeed;
 
-    const minScale = this.viewW < 700 ? 0.5 : 0.85;
+    const responsiveScale = this.viewW < 700 ? 0.62 : 1;
+    const ampScale = this.prefersReducedMotion ? 0.25 : 1;
 
     this.koi.forEach((k) => {
       const progress = (scrollCycles + this._idleOffset + k.phase) % 1;
@@ -227,7 +320,7 @@ class KoiScene {
       const bob = Math.sin(t * 0.6 + k.bobSeed) * bobAmp;
 
       k.mesh.position.set(x, y + bob, 0);
-      k.mesh.scale.setScalar(minScale);
+      k.mesh.scale.setScalar(75 * responsiveScale);
 
       const angle = Math.atan2(
         (pAhead.y - p.y) * this.viewH * 0.5,
@@ -235,10 +328,7 @@ class KoiScene {
       );
       k.mesh.rotation.z = angle;
 
-      // Gentle tail wag, independent of scroll — the "still alive" cue.
-      const wagAmp = this.prefersReducedMotion ? 0.08 : 0.35;
-      const wagSpeed = this.prefersReducedMotion ? 1.2 : 3.2;
-      k.mesh.userData.tailPivot.rotation.z = Math.sin(t * wagSpeed + k.swimSeed) * wagAmp;
+      this._updateBodyWave(k.mesh, t + k.swimSeed, ampScale);
     });
 
     this.renderer.render(this.scene, this.camera);
