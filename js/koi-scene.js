@@ -71,6 +71,15 @@ class KoiScene {
     );
   }
 
+  // Deterministic pseudo-random 0..1, used to bake in small irregularities
+  // (silhouette wobble, patch edge jaggedness) so shapes don't read as
+  // pure math — same input always gives the same output, so it's a fixed
+  // "personality" per koi, not per-frame jitter.
+  _hashNoise(x, seed) {
+    const s = Math.sin(x * 12.9898 + seed * 78.233) * 43758.5453;
+    return s - Math.floor(s);
+  }
+
   // Smooth width-at-x lookup over hand-placed control points, so the
   // silhouette is a real curve rather than a faceted straight-line
   // polygon between a handful of points.
@@ -121,26 +130,33 @@ class KoiScene {
     // than a barber-pole stripe.
     const blotches = paletteIndex % 2 === 0
       ? [
-          { cx: 0.45, cy: 0.09, rx: 0.34, ry: 0.15, color: patchColor },
-          { cx: -0.05, cy: -0.13, rx: 0.28, ry: 0.12, color: spotColor },
-          { cx: -0.45, cy: 0.08, rx: 0.18, ry: 0.09, color: patchColor },
+          { cx: 0.45, cy: 0.09, rx: 0.34, ry: 0.15, color: patchColor, seed: 3.1 },
+          { cx: -0.05, cy: -0.13, rx: 0.28, ry: 0.12, color: spotColor, seed: 7.4 },
+          { cx: -0.45, cy: 0.08, rx: 0.18, ry: 0.09, color: patchColor, seed: 11.2 },
         ]
       : [
-          { cx: 0.5, cy: -0.08, rx: 0.3, ry: 0.14, color: patchColor },
-          { cx: 0.05, cy: 0.12, rx: 0.26, ry: 0.11, color: spotColor },
-          { cx: -0.4, cy: -0.07, rx: 0.2, ry: 0.1, color: patchColor },
+          { cx: 0.5, cy: -0.08, rx: 0.3, ry: 0.14, color: patchColor, seed: 4.6 },
+          { cx: 0.05, cy: 0.12, rx: 0.26, ry: 0.11, color: spotColor, seed: 9.8 },
+          { cx: -0.4, cy: -0.07, rx: 0.2, ry: 0.1, color: patchColor, seed: 13.5 },
         ];
 
     const xSamples = 22;
-    const ySamples = 5; // rows across the body width, incl. both edges
-    const rowFracs = [-1, -0.55, 0, 0.55, 1];
+    const ySamples = 9; // rows across the body width — enough resolution
+                         // for patch edges to show some irregularity
+    const rowFracs = [-1, -0.75, -0.5, -0.25, 0, 0.25, 0.5, 0.75, 1];
 
     const baseX = new Float32Array(xSamples);
+    const wobbleSeed = paletteIndex * 5.1 + 2.3;
     const baseW = new Float32Array(xSamples);
     for (let xi = 0; xi < xSamples; xi++) {
       const x = -1 + (2 * xi) / (xSamples - 1);
       baseX[xi] = x;
-      baseW[xi] = this._widthAt(x, widthCtrl);
+      // A small baked-in silhouette wobble (low-frequency, so it reads as
+      // an organic irregularity rather than jitter) — real bodies aren't
+      // a perfectly clean mathematical curve.
+      const wobble =
+        (Math.sin(x * 4.1 + wobbleSeed) * 0.6 + Math.sin(x * 7.3 + wobbleSeed * 1.7) * 0.4) * 0.014;
+      baseW[xi] = Math.max(0, this._widthAt(x, widthCtrl) + wobble);
     }
 
     const vertCount = xSamples * ySamples;
@@ -163,10 +179,21 @@ class KoiScene {
 
         tmpColor.copy(bodyColor);
         blotches.forEach((b) => {
+          // Perturb the effective radius with low-frequency noise so the
+          // patch boundary is jagged/irregular rather than a clean ellipse.
+          const angle = Math.atan2((y - b.cy) / b.ry, (x - b.cx) / b.rx);
+          const edgeNoise = (Math.sin(angle * 3.1 + b.seed) * 0.5 + Math.sin(angle * 5.7 + b.seed * 1.4) * 0.5) * 0.18;
           const d = Math.sqrt(((x - b.cx) / b.rx) ** 2 + ((y - b.cy) / b.ry) ** 2);
-          const influence = Math.max(0, Math.min(1, 1.6 - d * 1.6));
+          const influence = Math.max(0, Math.min(1, 1.6 - (d + edgeNoise) * 1.6));
           if (influence > 0) tmpColor.lerp(b.color, influence);
         });
+
+        // Soft roundness shading: brighter along the centreline, gently
+        // darker toward the edges — a cheap stand-in for real lighting
+        // that keeps the body from reading as one flat plane of color.
+        const edgeShade = w > 0.001 ? Math.abs(y / w) : 0;
+        tmpColor.multiplyScalar(1 - edgeShade * 0.1);
+
         colors[vi * 3] = tmpColor.r;
         colors[vi * 3 + 1] = tmpColor.g;
         colors[vi * 3 + 2] = tmpColor.b;
