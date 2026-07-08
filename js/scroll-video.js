@@ -1,33 +1,34 @@
 /* ==========================================================================
-   ScrollVideo — High-performance scroll-driven video playback
-   Uses direct GPU-accelerated video element seeking with lerped
-   animation-frame seeking and in-flight seek checks to stay smooth.
-   Pairs with Lenis (js/smooth-scroll.js) which smooths the scroll input
-   itself, so the scrub reads as one continuous buttery motion.
+   ScrollVideo — Buttery-smooth scroll-scrubbed koi sequence.
+
+   Uses the same technique as riptide-website: the source video is
+   pre-extracted into a JPG frame sequence, preloaded as Image objects,
+   and drawn to a <canvas> with drawImage() on scroll. This avoids
+   <video>.currentTime seeking entirely, which is the actual source of
+   scrub stutter (every seek has to decode from the nearest keyframe).
+   A plain canvas draw of an already-decoded image has no such latency.
    ========================================================================== */
 
 class ScrollVideo {
   constructor() {
     this.section = document.querySelector('.scroll-video');
     this.sticky = document.querySelector('.scroll-video-sticky');
+    this.canvas = document.getElementById('scroll-video-canvas');
     this.progressBar = document.querySelector('.scroll-video-progress-fill');
     this.progressPct = document.querySelector('.scroll-video-progress-pct');
 
-    if (!this.sticky) return;
+    if (!this.sticky || !this.section || !this.canvas) return;
 
+    this.ctx = this.canvas.getContext('2d');
     this.ready = false;
     this.lastTextPhase = -1;
     this.targetProgress = 0;
     this.currentProgress = 0;
-    this.isActive = false;
 
-    // Direct display video
-    this.video = document.createElement('video');
-    this.video.id = 'scroll-video-el';
-    this.video.muted = true;
-    this.video.playsInline = true;
-    this.video.loop = false;
-    this.video.preload = 'auto';
+    this.totalFrames = 192;
+    this.frames = [];
+    this.isMobile = window.innerWidth < 768;
+    this.frameDir = this.isMobile ? 'mobile_frames' : 'pc_frames';
 
     this.phases = [
       { start: 0, end: 0.2, label: 'The Beginning', title: 'A Single\nStroke', desc: 'Every creation begins as a moment of intention — ink meeting paper.' },
@@ -39,59 +40,47 @@ class ScrollVideo {
     this._init();
   }
 
-  async _init() {
-    try {
-      const isMobile = window.innerWidth < 768;
-      const videoBase = isMobile ? 'videos/scroll-koi-mobile' : 'videos/scroll-koi';
+  _init() {
+    this._resizeCanvas();
+    window.addEventListener('resize', () => this._resizeCanvas(), { passive: true });
 
-      // Mobile has mp4 only (no webm), desktop has both
-      const mp4Src = document.createElement('source');
-      mp4Src.src = videoBase + '.mp4';
-      mp4Src.type = 'video/mp4';
-      this.video.appendChild(mp4Src);
-
-      if (!isMobile) {
-        const webmSrc = document.createElement('source');
-        webmSrc.src = videoBase + '.webm';
-        webmSrc.type = 'video/webm';
-        this.video.appendChild(webmSrc);
-      }
-
-      await new Promise((resolve, reject) => {
-        this.video.addEventListener('loadedmetadata', resolve, { once: true });
-        this.video.addEventListener('error', (e) => { if (this.video.duration > 0) resolve(); else reject(e); }, { once: true });
-        this.video.load();
-      });
-
-      if (!this.video.duration || this.video.duration <= 0) throw new Error('No duration');
-
-      // Insert video into DOM (after sticky but before overlays)
-      this.sticky.insertBefore(this.video, this.sticky.firstChild);
-
-      // Force seek to 0 first
-      this.video.currentTime = 0;
+    this._preloadFrames().then(() => {
       this.ready = true;
-      this.video.classList.add('visible');
-
-      // Start RAF loop
-      this._loop();
-
+      this.canvas.classList.add('visible');
+      this._drawFrame(0);
       window.addEventListener('scroll', () => this._onScroll(), { passive: true });
-    } catch (e) {
-      console.warn('ScrollVideo init failed:', e);
-      if (this.section) this.section.style.display = 'none';
-    }
+      this._onScroll();
+      this._loop();
+    });
+  }
+
+  _preloadFrames() {
+    return new Promise((resolve) => {
+      let loaded = 0;
+      for (let i = 0; i < this.totalFrames; i++) {
+        const img = new Image();
+        const idx = String(i).padStart(5, '0');
+        const done = () => { loaded++; if (loaded === this.totalFrames) resolve(); };
+        img.onload = done;
+        img.onerror = done;
+        img.src = `videos/${this.frameDir}/frame_${idx}.jpg`;
+        this.frames[i] = img;
+      }
+    });
+  }
+
+  _resizeCanvas() {
+    this.canvas.width = window.innerWidth;
+    this.canvas.height = window.innerHeight;
+    if (this.ready) this._drawFrame(this._frameForProgress(this.currentProgress));
   }
 
   scrollStarted() {
-    this.isActive = true;
-    this.video.classList.add('visible');
+    this.canvas.classList.add('visible');
   }
 
   scrollBack() {
-    this.isActive = false;
     this.targetProgress = 0;
-    this.video.classList.remove('visible');
   }
 
   _onScroll() {
@@ -110,27 +99,34 @@ class ScrollVideo {
     this._updateText(progress);
   }
 
+  _frameForProgress(progress) {
+    return Math.max(0, Math.min(this.totalFrames - 1, Math.round(progress * (this.totalFrames - 1))));
+  }
+
+  _drawFrame(index) {
+    const img = this.frames[index];
+    if (!img || !img.complete || !img.naturalWidth) return;
+
+    const cw = this.canvas.width;
+    const ch = this.canvas.height;
+    const scale = Math.max(cw / img.naturalWidth, ch / img.naturalHeight);
+    const w = img.naturalWidth * scale;
+    const h = img.naturalHeight * scale;
+
+    this.ctx.clearRect(0, 0, cw, ch);
+    this.ctx.drawImage(img, (cw - w) / 2, (ch - h) / 2, w, h);
+  }
+
   _loop() {
     requestAnimationFrame(() => this._loop());
 
-    if (!this.ready || !this.video) return;
-
-    // Smoothly interpolate currentProgress towards targetProgress.
-    // Lenis already smooths the scroll input, so a slightly quicker lerp
-    // here keeps the video tightly coupled to the (already-smooth) scroll
-    // without adding perceptible lag on top.
+    // Lenis already smooths the scroll input; a light lerp here just
+    // removes any last one-frame-tick sharpness on the frame switch.
     const diff = this.targetProgress - this.currentProgress;
-    this.currentProgress += diff * 0.12;
+    this.currentProgress += diff * 0.35;
+    if (Math.abs(diff) < 0.0005) this.currentProgress = this.targetProgress;
 
-    // Check if the current time matches the target time
-    const targetTime = this.currentProgress * this.video.duration;
-    const timeDiff = Math.abs(this.video.currentTime - targetTime);
-
-    // Only update currentTime if it differs meaningfully and no seek is
-    // already in flight — prevents seek congestion and stutter.
-    if (timeDiff > 0.02 && !this.video.seeking) {
-      this.video.currentTime = targetTime;
-    }
+    this._drawFrame(this._frameForProgress(this.currentProgress));
   }
 
   _updateText(progress) {
@@ -144,7 +140,6 @@ class ScrollVideo {
     const te = document.querySelector('.scroll-text-title');
     const de = document.querySelector('.scroll-text-desc');
 
-    // Fade out elements first
     if (le) le.classList.remove('visible');
     if (te) te.classList.remove('visible');
     if (de) de.classList.remove('visible');
@@ -154,20 +149,11 @@ class ScrollVideo {
 
     const p = this.phases[idx];
 
-    // Wait slightly for fade-out, then update content and fade-in
     setTimeout(() => {
-      if (idx !== this.lastTextPhase) return; // Ignore if user scrolled past
+      if (idx !== this.lastTextPhase) return;
       if (le) { le.textContent = p.label; le.classList.add('visible'); }
       if (te) { te.innerHTML = p.title; te.classList.add('visible'); }
       if (de) { de.textContent = p.desc; de.classList.add('visible'); }
-    }, 150); // matches CSS transition fade-out time
-  }
-
-  destroy() {
-    if (this.video) {
-      this.video.pause();
-      this.video.src = '';
-      this.video.remove();
-    }
+    }, 150);
   }
 }

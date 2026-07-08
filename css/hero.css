@@ -279,22 +279,7 @@
   pointer-events: none;
 }
 
-#scroll-video-el {
-  position: absolute;
-  inset: 0;
-  width: 100%;
-  height: 100%;
-  object-fit: cover;
-  pointer-events: none;
-  opacity: 0;
-  transition: opacity 0.3s ease;
-}
-
-#scroll-video-el.visible {
-  opacity: 1;
-}
-
-.scroll-video-canvas {
+#scroll-video-canvas {
   position: absolute;
   inset: 0;
   width: 100%;
@@ -302,10 +287,10 @@
   display: block;
   pointer-events: none;
   opacity: 0;
-  transition: opacity 0.15s ease;
+  transition: opacity 0.3s ease;
 }
 
-.scroll-video-canvas.visible {
+#scroll-video-canvas.visible {
   opacity: 1;
 }
 
@@ -540,5 +525,5 @@
   #hero-mask-canvas { display: none; }
   .scroll-video-sticky { position: relative; height: auto; }
   .scroll-video-spacer { display: none; }
-  .scroll-video-canvas { display: none; }
+  #scroll-video-canvas { display: none; }
 }
