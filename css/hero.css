@@ -2,6 +2,16 @@
    MCFWebs — Hover Mask Hero + Scroll Video
    ========================================================================== */
 
+/* ==================== KOI SCENE (ambient, full page) ==================== */
+#koi-canvas {
+  position: fixed;
+  inset: 0;
+  width: 100vw;
+  height: 100vh;
+  z-index: 50;
+  pointer-events: none;
+}
+
 /* ==================== HOVER MASK HERO ==================== */
 .hero {
   position: relative;
@@ -245,7 +255,7 @@
 .scroll-video {
   position: relative;
   width: 100%;
-  background: #000;
+  background: var(--paper-warm);
   margin-top: -100vh;
   margin-top: -100dvh;
   z-index: 1;
@@ -257,7 +267,7 @@
   height: 100vh;
   height: 100dvh;
   overflow: hidden;
-  background: #000;
+  background: var(--paper-warm);
 }
 
 .scroll-video-sticky::after {
@@ -265,7 +275,7 @@
   position: absolute;
   inset: 0;
   z-index: 2;
-  background: radial-gradient(circle at 10% 90%, rgba(0, 0, 0, 0.5) 0%, transparent 60%);
+  background: radial-gradient(circle at 10% 90%, rgba(255, 255, 255, 0.5) 0%, transparent 60%);
   pointer-events: none;
 }
 
@@ -325,12 +335,12 @@
 .scroll-interactive-text {
   width: 100%;
   max-width: 480px;
-  background: rgba(18, 18, 18, 0.55);
+  background: rgba(255, 255, 255, 0.7);
   backdrop-filter: blur(16px);
   -webkit-backdrop-filter: blur(16px);
-  border: 1px solid rgba(255, 255, 255, 0.08);
+  border: 1px solid rgba(26, 26, 26, 0.06);
   padding: 32px;
-  box-shadow: 0 30px 60px rgba(0, 0, 0, 0.4);
+  box-shadow: 0 30px 60px rgba(20, 40, 60, 0.1);
   pointer-events: auto;
   transition: border-color 0.5s ease;
 }
@@ -361,7 +371,7 @@
   font-size: clamp(28px, 4.5vw, 48px);
   font-weight: 600;
   line-height: 1.1;
-  color: white;
+  color: var(--ink);
   letter-spacing: -0.02em;
   opacity: 0;
   transform: translateY(15px);
@@ -376,7 +386,7 @@
 .scroll-text-desc {
   font-size: 14px;
   line-height: 1.6;
-  color: rgba(255, 255, 255, 0.65);
+  color: var(--ink-soft);
   max-width: 100%;
   margin-top: 12px;
   opacity: 0;
@@ -422,7 +432,7 @@
 .scroll-video-progress-track {
   width: 1px;
   height: 120px;
-  background: rgba(255,255,255,0.08);
+  background: rgba(26,26,26,0.1);
   position: relative;
   overflow: hidden;
 }
@@ -440,7 +450,7 @@
 .scroll-video-progress-pct {
   font-size: 10px;
   letter-spacing: 0.1em;
-  color: rgba(255,255,255,0.3);
+  color: var(--ink-light);
   font-feature-settings: 'tnum';
 }
 
