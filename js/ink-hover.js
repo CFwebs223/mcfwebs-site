@@ -101,6 +101,7 @@
 
   let renderer, scene, camera, mesh, uniforms, overlay, clock, raf;
   let activeEl = null;
+  let currentPad = 0;
 
   function ensureRenderer() {
     if (renderer) return;
@@ -128,20 +129,44 @@
   }
 
   function buildMaskTexture(el, w, h, pad) {
-    const style = getComputedStyle(el);
+    const baseStyle = getComputedStyle(el);
     const canvas = document.createElement('canvas');
     canvas.width = w;
     canvas.height = h;
     const ctx = canvas.getContext('2d');
     ctx.fillStyle = '#fff';
-    ctx.font = `${style.fontStyle} ${style.fontWeight} ${style.fontSize}/${style.lineHeight} ${style.fontFamily}`;
     ctx.textBaseline = 'top';
-    const lineHeight = parseFloat(style.lineHeight) || parseFloat(style.fontSize) * 1.2;
-    // Split on <br> for elements that use it (this heading pattern is
-    // common sitewide); otherwise treat as one line, which covers the
-    // vast majority of matched targets (nav links, labels, buttons).
-    const lines = el.innerHTML.split('<br>').map((s) => s.replace(/<[^>]+>/g, '').trim());
-    lines.forEach((line, i) => ctx.fillText(line, pad, pad + i * lineHeight));
+    const lineHeight = parseFloat(baseStyle.lineHeight) || parseFloat(baseStyle.fontSize) * 1.2;
+
+    // Group top-level child nodes into lines split at <br>, and draw
+    // each run with ITS OWN computed style rather than one font for
+    // the whole element — headings sitewide commonly wrap part of a
+    // line in a <span> with its own italic/weight/size (e.g. "Let's
+    // Create<br><span class="cta-em">Something Unforgettable</span>"),
+    // and drawing that run in the parent's font produced a mask shaped
+    // nothing like the real glyphs.
+    const lines = [[]];
+    el.childNodes.forEach((node) => {
+      if (node.nodeType === 1 && node.tagName === 'BR') {
+        lines.push([]);
+      } else {
+        lines[lines.length - 1].push(node);
+      }
+    });
+
+    lines.forEach((nodes, i) => {
+      let x = pad;
+      const y = pad + i * lineHeight;
+      nodes.forEach((node) => {
+        const text = node.textContent;
+        if (!text || !text.trim()) return;
+        const style = node.nodeType === 1 ? getComputedStyle(node) : baseStyle;
+        ctx.font = `${style.fontStyle} ${style.fontWeight} ${style.fontSize}/${style.lineHeight} ${style.fontFamily}`;
+        ctx.fillText(text, x, y);
+        x += ctx.measureText(text).width;
+      });
+    });
+
     return new THREE.CanvasTexture(canvas);
   }
 
@@ -172,6 +197,11 @@
 
     function tick() {
       raf = requestAnimationFrame(tick);
+      // The overlay is position:fixed and only ever placed once at
+      // hover-start; without re-reading the rect every frame it stays
+      // put on screen while the real (scrollable) text moves under it
+      // during scroll, so re-sync position each frame instead.
+      reposition(el);
       uniforms.uTime.value = clock.getElapsedTime();
       renderer.render(scene, camera);
     }
@@ -179,11 +209,18 @@
     tick();
   }
 
+  function reposition(el) {
+    const rect = el.getBoundingClientRect();
+    overlay.style.left = rect.left - currentPad + 'px';
+    overlay.style.top = rect.top - currentPad + 'px';
+  }
+
   function layout(el) {
     const rect = el.getBoundingClientRect();
     const pad = Math.max(12, parseFloat(getComputedStyle(el).fontSize) * 0.3);
     const w = Math.ceil(rect.width + pad * 2);
     const h = Math.ceil(rect.height + pad * 2);
+    currentPad = pad;
 
     overlay.style.left = rect.left - pad + 'px';
     overlay.style.top = rect.top - pad + 'px';
