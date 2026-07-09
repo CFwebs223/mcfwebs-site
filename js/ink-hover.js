@@ -107,7 +107,7 @@
     overlay = document.createElement('canvas');
     overlay.id = 'ink-melt-canvas';
     overlay.style.position = 'fixed';
-    overlay.style.zIndex = '5';
+    overlay.style.zIndex = '10000';
     overlay.style.pointerEvents = 'none';
     document.body.appendChild(overlay);
 
@@ -207,11 +207,8 @@
 
   function findTarget(el) {
     while (el && el !== document.body) {
-      if (el.matches && el.matches(TEXT_SELECTOR)) {
-        const hasOwnText = Array.from(el.childNodes).some(
-          (n) => n.nodeType === 3 && n.textContent.trim().length > 0
-        );
-        if (hasOwnText) return el;
+      if (el.matches && el.matches(TEXT_SELECTOR) && el.textContent.trim().length > 0) {
+        return el;
       }
       el = el.parentElement;
     }
