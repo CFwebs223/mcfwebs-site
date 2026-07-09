@@ -729,11 +729,10 @@ body::after {
   font-family: var(--font-display);
   font-size: clamp(20px, 2vw, 26px);
   font-weight: 600;
-  transition: transform 0.5s var(--ease-out-expo), color 0.4s var(--ease-out-expo);
+  transition: color 0.4s var(--ease-out-expo);
 }
 
 .capability-item:hover .capability-name {
-  transform: translateX(8px);
   color: var(--crimson);
 }
 
@@ -1152,7 +1151,6 @@ body::after {
 
 @media (hover: none) {
   .capability-arrow { opacity: 1; }
-  .capability-item:hover .capability-name { transform: none; }
 }
 
 /* ==================== INK MELT HOVER (real WebGL shader) ==================== */
