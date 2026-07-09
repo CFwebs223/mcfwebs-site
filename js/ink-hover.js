@@ -1,99 +1,138 @@
 /* ==========================================================================
-   Ink Hover — the hovered text itself wobbles slightly and bleeds a
-   glossy, lit ink-drip trail downward, via an SVG filter applied
-   directly to the element (distorts the real glyphs in place — no
-   overlay elements, no duplicated letters).
+   Ink Hover — real, animated, 3D ink drops falling from hovered text.
 
-   Two things that made the first attempt look like "glitching patches"
-   rather than ink, both fixed here:
-   1. The turbulence noise field was continuously re-randomised via an
-      <animate> on baseFrequency — changing that shuffles the noise
-      pattern discontinuously frame to frame, which reads as flicker/
-      static, not a smooth melt. The noise field is now static; only
-      the CSS filter reference itself is toggled on hover.
-   2. There was no actual lighting model — just a flat blurred colour
-      patch. feSpecularLighting (a real SVG "3D surface from a bump
-      map" primitive, the same tool used for glossy/embossed/wet-look
-      text effects) now lights the drip's own alpha shape, giving it an
-      actual highlight and a sense of a rounded, wet surface.
+   The previous two attempts used an SVG filter — fundamentally a 2D
+   trick with a fake bump-mapped highlight, which is why it kept reading
+   as flat/2D no matter how it was tuned. This version uses actual
+   Three.js geometry (already loaded on this page for the koi): real
+   sphere/droplet meshes with a physical, glossy material lit by a real
+   scene light, animated falling with gravity and squash/stretch — a
+   genuine 3D object, not a filtered image.
 
-   Ink colour inverts against the hovered text: dark/ink text gets a
-   red drip, red/crimson text gets a translucent black drip.
+   Ink colour inverts against the hovered text: dark/ink text drips red,
+   red/crimson text drips translucent black.
    ========================================================================== */
 
 (function () {
   if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+  if (typeof THREE === 'undefined') return;
 
   const TEXT_SELECTOR =
     'h1, h2, h3, h4, h5, h6, p, a, span, li, label, button, blockquote, dt, dd, td, th, div';
 
-  function injectFilters() {
-    const svgNS = 'http://www.w3.org/2000/svg';
-    const svg = document.createElementNS(svgNS, 'svg');
-    svg.setAttribute('width', '0');
-    svg.setAttribute('height', '0');
-    svg.style.position = 'absolute';
-    svg.setAttribute('aria-hidden', 'true');
+  const canvas = document.createElement('canvas');
+  canvas.id = 'ink-3d-canvas';
+  document.body.appendChild(canvas);
 
-    function buildFilter(id, rgb) {
-      return (
-        '<filter id="' + id + '" x="-30%" y="-25%" width="160%" height="340%" color-interpolation-filters="sRGB">' +
-          // Gentle organic wobble on the glyphs themselves — smooth
-          // Perlin-like turbulence, not the grainier fractalNoise, and
-          // no animation on it (that's what caused the flicker).
-          '<feTurbulence type="turbulence" baseFrequency="0.018 0.045" numOctaves="2" seed="7" result="noise" />' +
-          '<feDisplacementMap in="SourceGraphic" in2="noise" scale="3" xChannelSelector="R" yChannelSelector="G" result="wobble" />' +
+  const renderer = new THREE.WebGLRenderer({ canvas, alpha: true, antialias: true });
+  renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2));
 
-          // Drip trail: the glyphs' own alpha shape, stretched downward
-          // in three bands with progressively more blur and less
-          // opacity — a smooth taper rather than abrupt layers.
-          '<feOffset in="SourceAlpha" dx="0" dy="3" result="o1" />' +
-          '<feGaussianBlur in="o1" stdDeviation="1" result="b1" />' +
-          '<feComponentTransfer in="b1" result="b1f"><feFuncA type="linear" slope="0.9" /></feComponentTransfer>' +
-          '<feOffset in="SourceAlpha" dx="0" dy="10" result="o2" />' +
-          '<feGaussianBlur in="o2" stdDeviation="2.6" result="b2" />' +
-          '<feComponentTransfer in="b2" result="b2f"><feFuncA type="linear" slope="0.55" /></feComponentTransfer>' +
-          '<feOffset in="SourceAlpha" dx="0" dy="20" result="o3" />' +
-          '<feGaussianBlur in="o3" stdDeviation="5.5" result="b3" />' +
-          '<feComponentTransfer in="b3" result="b3f"><feFuncA type="linear" slope="0.3" /></feComponentTransfer>' +
-          '<feMerge result="dripShape">' +
-            '<feMergeNode in="b1f" /><feMergeNode in="b2f" /><feMergeNode in="b3f" />' +
-          '</feMerge>' +
+  const scene = new THREE.Scene();
 
-          // Tint the drip with the ink colour (alpha already tapered above).
-          '<feColorMatrix in="dripShape" type="matrix" values="' +
-            '0 0 0 0 ' + rgb[0] + ' ' +
-            '0 0 0 0 ' + rgb[1] + ' ' +
-            '0 0 0 0 ' + rgb[2] + ' ' +
-            '0 0 0 1 0" result="tintedDrip" />' +
+  // Screen-space orthographic camera: world (x,y) maps 1:1 to viewport
+  // pixels with y increasing downward, so DOM coordinates (clientX/Y)
+  // can be used directly as drop positions with no conversion.
+  let viewW = window.innerWidth;
+  let viewH = window.innerHeight;
+  const camera = new THREE.OrthographicCamera(0, viewW, 0, viewH, 0.1, 1000);
+  camera.position.z = 100;
 
-          // 3D gloss: light the drip's own (blurred) alpha as a bump
-          // map, so it reads as a rounded, wet surface with a real
-          // highlight rather than a flat colour patch.
-          '<feGaussianBlur in="dripShape" stdDeviation="1.6" result="bump" />' +
-          '<feSpecularLighting in="bump" surfaceScale="4.5" specularConstant="1" specularExponent="16" lighting-color="#ffffff" result="spec">' +
-            '<fePointLight x="-20" y="-70" z="60" />' +
-          '</feSpecularLighting>' +
-          '<feComposite in="spec" in2="dripShape" operator="in" result="specClipped" />' +
+  scene.add(new THREE.AmbientLight(0xffffff, 0.55));
+  const keyLight = new THREE.PointLight(0xffffff, 1.4, 2000);
+  keyLight.position.set(-150, -400, 260);
+  scene.add(keyLight);
+  const rimLight = new THREE.PointLight(0xffffff, 0.4, 2000);
+  rimLight.position.set(300, 200, 200);
+  scene.add(rimLight);
 
-          '<feMerge result="glossyDrip">' +
-            '<feMergeNode in="tintedDrip" /><feMergeNode in="specClipped" />' +
-          '</feMerge>' +
+  function resize() {
+    viewW = window.innerWidth;
+    viewH = window.innerHeight;
+    renderer.setSize(viewW, viewH);
+    camera.right = viewW;
+    camera.bottom = viewH;
+    camera.updateProjectionMatrix();
+  }
+  window.addEventListener('resize', resize, { passive: true });
+  resize();
 
-          '<feMerge>' +
-            '<feMergeNode in="glossyDrip" /><feMergeNode in="wobble" />' +
-          '</feMerge>' +
-        '</filter>'
+  const dropGeometry = new THREE.SphereGeometry(1, 18, 18);
+  const drops = [];
+
+  function spawnDrop(x, y, color) {
+    const material = new THREE.MeshPhysicalMaterial({
+      color,
+      roughness: 0.22,
+      metalness: 0,
+      clearcoat: 1,
+      clearcoatRoughness: 0.12,
+      transparent: true,
+      opacity: 0.95,
+    });
+    const mesh = new THREE.Mesh(dropGeometry, material);
+    const size = 4.5 + Math.random() * 3.5;
+    mesh.position.set(x, y, 0);
+    mesh.scale.set(size, size, size);
+    scene.add(mesh);
+
+    drops.push({
+      mesh,
+      vy: 20 + Math.random() * 20,
+      age: 0,
+      life: 1.3 + Math.random() * 0.5,
+      baseSize: size,
+      swayPhase: Math.random() * Math.PI * 2,
+      swaySpeed: 4 + Math.random() * 2,
+    });
+  }
+
+  let running = false;
+  const clock = new THREE.Clock();
+
+  function tick() {
+    if (drops.length === 0) {
+      running = false;
+      return;
+    }
+    requestAnimationFrame(tick);
+    const dt = Math.min(clock.getDelta(), 0.05);
+
+    for (let i = drops.length - 1; i >= 0; i--) {
+      const d = drops[i];
+      d.age += dt;
+
+      // Gravity + gentle horizontal sway as it falls, like a real drip.
+      d.vy += 340 * dt;
+      d.mesh.position.y += d.vy * dt;
+      d.mesh.position.x += Math.sin(d.age * d.swaySpeed + d.swayPhase) * 6 * dt;
+
+      // Squash/stretch: elongates vertically as it picks up speed,
+      // tapers as it nears the end of its life.
+      const p = Math.min(1, d.age / d.life);
+      const stretch = 1 + Math.min(d.vy / 90, 1.6);
+      const shrink = Math.max(0, 1 - p * p);
+      d.mesh.scale.set(
+        d.baseSize * shrink * (1 - p * 0.25),
+        d.baseSize * shrink * stretch,
+        d.baseSize * shrink
       );
+      d.mesh.material.opacity = 0.95 * shrink;
+
+      if (p >= 1) {
+        scene.remove(d.mesh);
+        d.mesh.material.dispose();
+        drops.splice(i, 1);
+      }
     }
 
-    svg.innerHTML =
-      '<defs>' +
-      buildFilter('ink-drip-red', [0.737, 0, 0.176]) + // crimson #bc002d
-      buildFilter('ink-drip-black', [0.1, 0.1, 0.1]) +
-      '</defs>';
+    renderer.render(scene, camera);
+  }
 
-    document.body.appendChild(svg);
+  function ensureRunning() {
+    if (running) return;
+    running = true;
+    clock.start();
+    tick();
   }
 
   function isReddish(rgbString) {
@@ -116,28 +155,29 @@
     return null;
   }
 
-  injectFilters();
+  const lastSpawn = new WeakMap();
+  const SPAWN_INTERVAL = 220;
 
   document.addEventListener(
-    'mouseover',
+    'mousemove',
     (e) => {
       const el = findTextTarget(e.target);
-      if (!el || el.classList.contains('ink-dripping')) return;
+      if (!el) return;
+
+      const now = performance.now();
+      const last = lastSpawn.get(el) || 0;
+      if (now - last < SPAWN_INTERVAL) return;
+      lastSpawn.set(el, now);
+
       const reddish = isReddish(getComputedStyle(el).color);
-      el.classList.add('ink-dripping');
-      el.style.filter = 'url(#' + (reddish ? 'ink-drip-black' : 'ink-drip-red') + ')';
-    },
-    { passive: true }
-  );
+      const color = reddish ? 0x1a1a1a : 0xbc002d;
+      const rect = el.getBoundingClientRect();
+      // Spawn near the cursor but biased toward the text's own baseline
+      // area, so drops read as coming off the letters, not the pointer.
+      const y = Math.min(e.clientY, rect.bottom - rect.height * 0.15);
 
-  document.addEventListener(
-    'mouseout',
-    (e) => {
-      const el = findTextTarget(e.target);
-      if (!el || !el.classList.contains('ink-dripping')) return;
-      if (el.contains(e.relatedTarget)) return;
-      el.classList.remove('ink-dripping');
-      el.style.filter = '';
+      spawnDrop(e.clientX, y, color);
+      ensureRunning();
     },
     { passive: true }
   );

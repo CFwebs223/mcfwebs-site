@@ -1155,12 +1155,18 @@ body::after {
   .capability-item:hover .capability-name { transform: none; }
 }
 
-/* ==================== INK DRIP HOVER ==================== */
-/* The actual filter (melt distortion + colour-tinted drip trail, derived
-   from the hovered element's own text shape) is applied inline via
-   ink-hover.js — no overlay elements, it distorts the real glyphs. */
-.ink-dripping {
-  will-change: filter;
+/* ==================== INK DRIP HOVER (real 3D, see js/ink-hover.js) ==================== */
+/* A dedicated WebGL overlay canvas — real Three.js drop geometry with a
+   physical (clearcoat/glossy) material and actual scene lighting, not a
+   2D filter trick. Sits above normal content (but below nav) since it's
+   an active hover effect, not an ambient background layer. */
+#ink-3d-canvas {
+  position: fixed;
+  inset: 0;
+  width: 100vw;
+  height: 100vh;
+  z-index: 40;
+  pointer-events: none;
 }
 
 @media (prefers-reduced-motion: reduce) {
@@ -1168,6 +1174,6 @@ body::after {
     opacity: 1; transform: none; transition: none;
   }
   .hero-scroll-line { animation: none; }
-  .ink-dripping { filter: none !important; }
+  #ink-3d-canvas { display: none; }
   * { animation-duration: 0.01ms !important; transition-duration: 0.01ms !important; }
 }
