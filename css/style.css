@@ -1155,39 +1155,13 @@ body::after {
   .capability-item:hover .capability-name { transform: none; }
 }
 
-/* ==================== INK OIL-SHEEN HOVER ==================== */
-/* A glossy gradient sheen clipped to the letter shapes themselves —
-   background-clip:text means it is physically impossible for this to
-   extend past the glyphs ("attached only inside the text"). The sheen's
-   center tracks the cursor (see js/ink-hover.js) for a moving,
-   oil-on-water quality; it always contrasts the text's own base colour. */
-.ink-oil-active {
-  background-repeat: no-repeat;
-  background-size: 260% 260%;
-  -webkit-background-clip: text;
-  background-clip: text;
-  color: transparent;
-  -webkit-text-fill-color: transparent;
-}
-
-.ink-oil-active.ink-oil-red {
-  background-image: radial-gradient(
-    circle at var(--mx, 50%) var(--my, 50%),
-    #ffffff 0%,
-    #ff6b6b 14%,
-    #bc002d 32%,
-    #5c0015 62%
-  );
-}
-
-.ink-oil-active.ink-oil-black {
-  background-image: radial-gradient(
-    circle at var(--mx, 50%) var(--my, 50%),
-    #ffffff 0%,
-    #8a8a8a 14%,
-    #1a1a1a 32%,
-    #000000 62%
-  );
+/* ==================== INK MELT HOVER (real WebGL shader) ==================== */
+/* See js/ink-hover.js — a GLSL shader renders a lit, distorted, melting
+   ink shape masked exactly to the hovered element's own glyphs onto
+   this single reused canvas, repositioned/resized per hover. */
+#ink-melt-canvas {
+  width: 0;
+  height: 0;
 }
 
 @media (prefers-reduced-motion: reduce) {
