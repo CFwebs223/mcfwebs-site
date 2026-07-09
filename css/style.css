@@ -389,144 +389,223 @@ body::after {
   max-width: 460px;
 }
 
-/* Project spread — full-viewport editorial showcase */
-.project-spread {
-  position: relative;
-  width: 100%;
-  min-height: 90vh;
-  display: flex;
-  align-items: flex-end;
-  overflow: hidden;
-  margin-bottom: 40px;
+/* Capability cards — tilt-on-hover, replacing the old fabricated
+   case-study spreads with honest, real capability previews. */
+.capability-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 32px;
 }
 
-@media (min-width: 768px) {
-  .project-spread {
-    min-height: 85vh;
-    margin-bottom: 60px;
+@media (max-width: 900px) {
+  .capability-grid {
+    grid-template-columns: 1fr;
   }
 }
 
-.project-spread:last-child {
-  margin-bottom: 0;
+.capability-card {
+  perspective: 1200px;
 }
 
-/* Background — typographic color field */
-.project-bg {
+.capability-card-inner {
+  position: relative;
+  height: 100%;
+  background: var(--paper-bright);
+  border: 0.5px solid var(--border);
+  border-radius: 16px;
+  padding: 28px;
+  overflow: hidden;
+  transform-style: preserve-3d;
+  transition: transform 0.15s ease-out, box-shadow 0.3s ease, border-color 0.3s ease;
+  will-change: transform;
+}
+
+.capability-card-inner:hover {
+  border-color: var(--crimson-fade);
+  box-shadow: 0 30px 60px rgba(26, 26, 26, 0.08);
+}
+
+.capability-card-inner::after {
+  content: '';
   position: absolute;
   inset: 0;
+  background: radial-gradient(circle at var(--glare-x, 50%) var(--glare-y, 50%), rgba(255, 255, 255, 0.55), transparent 60%);
+  opacity: 0;
+  transition: opacity 0.3s ease;
+  pointer-events: none;
+}
+
+.capability-card-inner:hover::after {
+  opacity: 1;
+}
+
+.capability-visual {
+  position: relative;
+  aspect-ratio: 16 / 10;
+  border-radius: 10px;
+  margin-bottom: 22px;
+  overflow: hidden;
+  background: linear-gradient(135deg, var(--paper-warm) 0%, var(--paper-dim) 100%);
   display: flex;
   align-items: center;
   justify-content: center;
-  overflow: hidden;
 }
 
-.project-bg-text {
+.capability-card-title {
   font-family: var(--font-display);
-  font-weight: 700;
-  font-size: clamp(180px, 25vw, 400px);
-  line-height: 1;
-  letter-spacing: -0.04em;
-  user-select: none;
-  opacity: 0.04;
-  white-space: nowrap;
-  transition: opacity 1.2s var(--ease-out-expo);
-}
-
-.project-spread:hover .project-bg-text {
-  opacity: 0.08;
-}
-
-/* Project spread overlay content */
-.project-content {
-  position: relative;
-  z-index: 2;
-  width: 100%;
-  padding: 60px var(--margin-mobile);
-  background: linear-gradient(to top, rgba(250,250,250,0.95) 30%, transparent);
-}
-
-@media (min-width: 768px) {
-  .project-content {
-    padding: 80px var(--margin-desktop);
-  }
-}
-
-.project-number {
-  display: block;
+  font-size: 21px;
+  font-weight: 600;
   margin-bottom: 8px;
-  color: var(--crimson);
-  font-weight: 500;
 }
 
-.project-title {
-  margin-bottom: 12px;
-  transition: transform 0.6s var(--ease-out-expo);
-}
-
-.project-spread:hover .project-title {
-  transform: translateX(8px);
-}
-
-.project-meta {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 24px;
-  margin-bottom: 24px;
+.capability-card-desc {
   color: var(--ink-light);
+  margin-bottom: 18px;
 }
 
-.project-desc {
-  max-width: 480px;
-  margin-bottom: 32px;
-}
-
-.project-cta {
+.capability-card-link {
   display: inline-flex;
   align-items: center;
+  gap: 6px;
+  color: var(--crimson);
+  transition: gap 0.3s var(--ease-out-expo);
+}
+
+.capability-card-inner:hover .capability-card-link {
+  gap: 10px;
+}
+
+/* -- Mockup: browser window -- */
+.mock-browser {
+  width: 78%;
+  border-radius: 8px;
+  overflow: hidden;
+  background: var(--paper-bright);
+  box-shadow: 0 12px 30px rgba(26, 26, 26, 0.1);
+}
+
+.mock-browser-bar {
+  display: flex;
+  gap: 5px;
+  padding: 8px 10px;
+  background: var(--paper-dim);
+}
+
+.mock-browser-bar span {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: rgba(26, 26, 26, 0.15);
+}
+
+.mock-browser-body {
+  padding: 16px;
+  display: flex;
+  flex-direction: column;
   gap: 8px;
-  font-size: 11px;
-  letter-spacing: 0.12em;
-  text-transform: uppercase;
-  font-weight: 600;
-  color: var(--ink);
-  transition: gap 0.4s var(--ease-out-expo);
 }
 
-.project-spread:hover .project-cta {
-  gap: 16px;
+.mock-line {
+  height: 8px;
+  border-radius: 4px;
+  background: linear-gradient(90deg, var(--crimson-fade), rgba(26, 26, 26, 0.06));
 }
 
-.project-cta-arrow {
-  transition: transform 0.4s var(--ease-out-expo);
+.mock-line-lg {
+  width: 70%;
+  height: 14px;
 }
 
-.project-spread:hover .project-cta-arrow {
-  transform: translateX(4px);
+.mock-line-sm {
+  width: 90%;
 }
 
-/* Crimson accent line on hover */
-.project-accent {
-  position: absolute;
-  bottom: 0;
-  left: 0;
-  width: 0;
-  height: 2px;
+.mock-line-short {
+  width: 45%;
+}
+
+/* -- Mockup: phone + QR -- */
+.mock-phone {
+  width: 42%;
+  aspect-ratio: 9 / 16;
+  background: var(--paper-bright);
+  border-radius: 14px;
+  box-shadow: 0 12px 30px rgba(26, 26, 26, 0.1);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 14px;
+  padding: 12px;
+}
+
+.mock-qr {
+  width: 56px;
+  height: 56px;
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  grid-template-rows: repeat(3, 1fr);
+  gap: 4px;
+}
+
+.mock-qr span {
+  background: var(--ink);
+  border-radius: 1px;
+}
+
+.mock-qr span:nth-child(3n+2) {
   background: var(--crimson);
-  transition: width 0.8s var(--ease-out-expo);
-  z-index: 3;
 }
 
-.project-spread:hover .project-accent {
+/* -- Mockup: calendar -- */
+.mock-calendar {
+  width: 66%;
+  background: var(--paper-bright);
+  border-radius: 10px;
+  box-shadow: 0 12px 30px rgba(26, 26, 26, 0.1);
+  padding: 14px;
+}
+
+.mock-calendar-head {
+  display: flex;
+  justify-content: space-between;
+  margin-bottom: 10px;
+}
+
+.mock-calendar-head span {
+  width: 20px;
+  height: 6px;
+  border-radius: 3px;
+  background: rgba(26, 26, 26, 0.1);
+}
+
+.mock-calendar-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 6px;
+}
+
+.mock-calendar-grid span {
+  aspect-ratio: 1;
+  border-radius: 4px;
+  background: rgba(26, 26, 26, 0.06);
+}
+
+.mock-calendar-selected {
+  background: var(--crimson) !important;
+}
+
+#capability-3d-canvas {
   width: 100%;
+  height: 100%;
+  display: block;
 }
 
-/* Background color variants */
-.project-bg-1 { background: linear-gradient(135deg, #eaf4fb 0%, #dceef9 100%); }
-.project-bg-1 .project-bg-text { color: var(--ink); }
-
-.project-bg-2 { background: linear-gradient(135deg, #f0f8fd 0%, #e2f0fa 100%); }
-.project-bg-2 .project-bg-text { color: var(--ink); }
+@media (prefers-reduced-motion: reduce) {
+  .capability-card-inner {
+    transform: none !important;
+  }
+}
 
 /* ==================== CAPABILITIES ==================== */
 .capabilities-grid {
@@ -996,15 +1075,6 @@ body::after {
 
 /* ==================== RESPONSIVE ==================== */
 @media (max-width: 767px) {
-  .project-spread {
-    min-height: 70vh;
-    margin-bottom: 24px;
-  }
-
-  .project-content {
-    padding: 40px var(--margin-mobile);
-  }
-
   .results-grid {
     gap: 32px;
     margin-bottom: 60px;
@@ -1023,9 +1093,6 @@ body::after {
 @media (hover: none) {
   .capability-arrow { opacity: 1; }
   .capability-item:hover .capability-name { transform: none; }
-  .project-title { transform: none !important; }
-  .project-cta { gap: 8px !important; }
-  .project-spread:hover .project-accent { width: 0; }
 }
 
 /* ==================== INK DRIP HOVER ==================== */

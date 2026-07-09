@@ -240,17 +240,6 @@
       });
     });
 
-    // ---- Auto-select from URL param ----
-    (function() {
-      var params = new URLSearchParams(window.location.search);
-      var project = params.get('project');
-      var planMap = { kinship: 'classic-site', chronos: '3d-scroll' };
-      if (project && planMap[project]) {
-        var select = document.getElementById('plan');
-        if (select) select.value = planMap[project];
-      }
-    })();
-
     // ---- Formspree Ajax init ----
     window.formspree = window.formspree || function () { (formspree.q = formspree.q || []).push(arguments); };
     formspree('initForm', { formElement: '#pricing-form', formId: 'xgoqgrow' });
