@@ -55,14 +55,23 @@ class ScrollVideo {
   }
 
   _preloadFrames() {
+    // Only gate readiness on frame 0 — firing all 192 requests at once
+    // and waiting for every single one to finish (as this used to do)
+    // means a page load hangs on the loading screen (and shows a black
+    // canvas) whenever the browser's connection queue makes even one
+    // of those 192 requests slow. The rest keep loading in the
+    // background; _drawFrame() already skips undrawn frames until they
+    // arrive, so playback just catches up as they land.
     return new Promise((resolve) => {
-      let loaded = 0;
+      let resolved = false;
       for (let i = 0; i < this.totalFrames; i++) {
         const img = new Image();
         const idx = String(i).padStart(5, '0');
-        const done = () => { loaded++; if (loaded === this.totalFrames) resolve(); };
-        img.onload = done;
-        img.onerror = done;
+        if (i === 0) {
+          const done = () => { if (!resolved) { resolved = true; resolve(); } };
+          img.onload = done;
+          img.onerror = done;
+        }
         img.src = `videos/${this.frameDir}/frame_${idx}.jpg`;
         this.frames[i] = img;
       }
