@@ -364,14 +364,6 @@ body::after {
   transition: stroke-dashoffset 0.1s linear;
 }
 
-/* Keep real content above the ambient koi canvas (z-index:3) so the
-   fish swim behind text, buttons, and forms instead of over them —
-   only the hero and koi-video pond sections intentionally sit below it. */
-#work, #capabilities, #process, #results, #contact, .footer {
-  position: relative;
-  z-index: 4;
-}
-
 /* ==================== FEATURED WORK ==================== */
 .section-work {
   padding-bottom: var(--section-gap);
@@ -1048,12 +1040,21 @@ body::after {
   margin-left: -6px;
   margin-top: -6px;
   border-radius: 50%;
-  background: radial-gradient(circle, rgba(26, 26, 26, 0.4) 0%, rgba(26, 26, 26, 0.16) 55%, transparent 75%);
   filter: blur(3px);
   mix-blend-mode: multiply;
   pointer-events: none;
   z-index: 5;
   animation: inkDripFall 1.3s var(--ease-out) forwards;
+}
+
+/* Ink colour inverts against the text it's on: dark/ink text -> red
+   drip, red/crimson text -> translucent black drip. */
+.ink-drip-red {
+  background: radial-gradient(circle, rgba(188, 0, 45, 0.45) 0%, rgba(188, 0, 45, 0.18) 55%, transparent 75%);
+}
+
+.ink-drip-black {
+  background: radial-gradient(circle, rgba(26, 26, 26, 0.4) 0%, rgba(26, 26, 26, 0.16) 55%, transparent 75%);
 }
 
 @keyframes inkDripFall {

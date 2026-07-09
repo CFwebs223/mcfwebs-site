@@ -11,11 +11,18 @@ class KoiScene {
     this.scrollProgress = 0;
     this.clock = new THREE.Clock();
 
-    // The scroll-koi video section owns the koi visual while it's on
-    // screen — the ambient vector koi fade out over it and take over for
-    // the rest of the page.
+    // The hero and the scroll-koi video section both intentionally sit
+    // above the koi canvas (they need it to render over their own
+    // backgrounds); every other section needs the koi safely behind its
+    // text/buttons instead. Rather than enumerate every section (fragile —
+    // easy to miss one), the canvas z-index is flipped dynamically: a
+    // small positive value while the hero/pond zone is on screen, and a
+    // negative one otherwise, which CSS stacking rules guarantee paints
+    // below all normal static content with zero enumeration needed.
+    this.heroSection = document.querySelector('.hero');
     this.videoSection = document.querySelector('.scroll-video');
     this.canvasOpacity = 0;
+    this.inFrontZone = true;
 
     this.ripples = [];
     this.rippleGeo = null;
@@ -424,13 +431,27 @@ class KoiScene {
     const dt = Math.min(this.clock.getDelta(), 0.1);
     const t = this.clock.elapsedTime;
 
-    // Fade out while the koi-video narrative covers the viewport.
+    // Zone detection. The koi-video section overlaps the hero in the DOM
+    // (it uses a -100vh margin so its sticky pinning starts right as the
+    // hero scrolls away), so its bounding rect alone can't tell "in the
+    // hero" apart from "in the pond" — both read as "covering". Checking
+    // the hero's own visibility first disambiguates them correctly.
     let targetOpacity = 1;
-    if (this.videoSection) {
-      const rect = this.videoSection.getBoundingClientRect();
-      const covering = rect.top < this.viewH * 0.6 && rect.bottom > this.viewH * 0.4;
-      targetOpacity = covering ? 0 : 1;
+    let frontZone = true;
+    if (this.heroSection && this.videoSection) {
+      const heroRect = this.heroSection.getBoundingClientRect();
+      const videoRect = this.videoSection.getBoundingClientRect();
+      const heroVisible = heroRect.bottom > 0;
+      const pondActive = !heroVisible && videoRect.bottom > 0;
+
+      frontZone = heroVisible || pondActive;
+      targetOpacity = pondActive ? 0 : 1; // hide only for the real video's moment
     }
+    if (frontZone !== this.inFrontZone) {
+      this.inFrontZone = frontZone;
+      this.canvas.style.zIndex = frontZone ? '3' : '-1';
+    }
+
     this.canvasOpacity += (targetOpacity - this.canvasOpacity) * Math.min(1, dt * 4);
     this.canvas.style.opacity = this.canvasOpacity.toFixed(3);
     if (this.canvasOpacity < 0.01) {

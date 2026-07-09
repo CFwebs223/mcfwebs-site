@@ -8,11 +8,10 @@
   inset: 0;
   width: 100vw;
   height: 100vh;
-  /* Sits just above the hero (z-index:2) and koi-video pond (z-index:1)
-     so it's visible in those two immersive sections, but every other
-     piece of real content is explicitly promoted above it (see
-     style.css) so the koi swim behind text/buttons/nav rather than
-     over them. */
+  /* Starting value matches the hero/pond zone (koi-scene.js flips this
+     to a negative z-index once scrolled past both, so normal static
+     content — which has no explicit z-index — paints above it without
+     needing to enumerate every section). */
   z-index: 3;
   pointer-events: none;
 }
