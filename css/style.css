@@ -1153,15 +1153,6 @@ body::after {
   .capability-arrow { opacity: 1; }
 }
 
-/* ==================== INK MELT HOVER (real WebGL shader) ==================== */
-/* See js/ink-hover.js — a GLSL shader renders a lit, distorted, melting
-   ink shape masked exactly to the hovered element's own glyphs onto
-   this single reused canvas, repositioned/resized per hover. */
-#ink-melt-canvas {
-  width: 0;
-  height: 0;
-}
-
 @media (prefers-reduced-motion: reduce) {
   .reveal, .reveal-left, .reveal-right {
     opacity: 1; transform: none; transition: none;
