@@ -11,6 +11,14 @@ class KoiScene {
     this.scrollProgress = 0;
     this.clock = new THREE.Clock();
 
+    // Swim progress is driven by scroll *distance travelled*, not scroll
+    // *position* — using window.scrollY directly meant scrolling up
+    // literally reversed the koi back along their path. Accumulating the
+    // absolute delta each frame means any scrolling, in either
+    // direction, keeps them swimming forward.
+    this._lastScrollY = window.scrollY;
+    this._scrollDistance = 0;
+
     // The hero and the scroll-koi video section both intentionally sit
     // above the koi canvas (they need it to render over their own
     // backgrounds); every other section needs the koi safely behind its
@@ -22,7 +30,6 @@ class KoiScene {
     this.heroSection = document.querySelector('.hero');
     this.videoSection = document.querySelector('.scroll-video');
     this.ctaSection = document.querySelector('.cta-section');
-    console.log('[koi-leap] ctaSection found:', !!this.ctaSection);
     this.canvasOpacity = 0;
     this.inFrontZone = true;
 
@@ -395,10 +402,10 @@ class KoiScene {
   // beat — a few rings fired in quick succession rather than one, so it
   // reads as a flash rather than a single ripple like the ambient ones.
   _spawnLeapBurst(x, y, scale) {
-    [0, 0.12, 0.24].forEach((delay, i) => {
+    [0, 0.1, 0.2, 0.32].forEach((delay, i) => {
       setTimeout(() => {
         if (!this.scene) return;
-        this._spawnRipple(x, y, scale * (1 + i * 0.3), 0xf3c26a, 0.45);
+        this._spawnRipple(x, y, scale * (1.8 + i * 0.6), 0xf3c26a, 0.65);
       }, delay * 1000);
     });
   }
@@ -469,6 +476,10 @@ class KoiScene {
     const dt = Math.min(this.clock.getDelta(), 0.1);
     const t = this.clock.elapsedTime;
 
+    const scrollYNow = window.scrollY;
+    this._scrollDistance += Math.abs(scrollYNow - this._lastScrollY);
+    this._lastScrollY = scrollYNow;
+
     // Zone detection. The koi-video section overlaps the hero in the DOM
     // (it uses a -100vh margin so its sticky pinning starts right as the
     // hero scrolls away), so its bounding rect alone can't tell "in the
@@ -497,7 +508,6 @@ class KoiScene {
       const ctaRect = this.ctaSection.getBoundingClientRect();
       const ctaZone = ctaRect.top < this.viewH * 0.75 && ctaRect.bottom > this.viewH * 0.15;
       if (ctaZone && !this.leapTriggered) {
-        console.log('[koi-leap] triggered');
         this.leapTriggered = true;
         this.leapActive = true;
         this.leapT = 0;
@@ -514,11 +524,13 @@ class KoiScene {
       return;
     }
 
-    // A full circuit every ~2.2 viewport-heights of scroll, so the koi keep
-    // actively swimming across a long page rather than settling near the
-    // bottom for most of the scroll length.
+    // A full circuit every ~2.2 viewport-heights of scroll distance
+    // travelled (not position — see _scrollDistance above), so the koi
+    // keep actively swimming forward across a long page, in either
+    // scroll direction, rather than settling near the bottom or
+    // reversing when the visitor scrolls back up.
     const cycleHeight = this.viewH * 2.2;
-    const scrollCycles = (window.scrollY % cycleHeight) / cycleHeight;
+    const scrollCycles = (this._scrollDistance % cycleHeight) / cycleHeight;
 
     // Idle drift so the school still feels alive when scroll is paused —
     // dampened heavily under reduced motion, never fully stopped.
@@ -530,7 +542,7 @@ class KoiScene {
 
     // Advance the leap, if one is playing, once per frame (not per-koi).
     if (this.leapActive) {
-      const leapSpeed = this.prefersReducedMotion ? 0.55 : 0.42;
+      const leapSpeed = this.prefersReducedMotion ? 0.55 : 0.3;
       this.leapT += dt * leapSpeed;
       if (!this.leapBurstFired && this.leapT >= 0.5) {
         this.leapBurstFired = true;
@@ -551,15 +563,23 @@ class KoiScene {
         const p = this._leapPoint(lt);
         const pAhead = this._leapPoint(ahead);
 
-        k.mesh.position.set(p.x, p.y, 0);
-        const leapScale = 85 * responsiveScale * (1 + Math.sin(Math.PI * lt) * 0.2);
+        k.mesh.position.set(p.x, p.y, 5);
+        // A much bigger, more obvious size swell than the ambient bob —
+        // this needs to read as "breaking from the school", not just a
+        // slightly livelier swim.
+        const leapScale = 85 * responsiveScale * (1 + Math.sin(Math.PI * lt) * 0.7);
         k.mesh.scale.setScalar(leapScale);
         k.mesh.rotation.z = Math.atan2(pAhead.y - p.y, pAhead.x - p.x);
 
         this._updateBodyWave(k.mesh, t * 1.8 + k.swimSeed, ampScale * 1.4);
 
+        // Warm gold halo (color swap, not just brighter blue) so the
+        // leaping koi is visually distinct from the ambient school, with
+        // its own glow scaling up dramatically at the apex.
         const glow = k.mesh.userData.glow;
-        glow.material.opacity = 0.3 + Math.sin(Math.PI * lt) * 0.25;
+        glow.material.color.setHex(0xf3c26a);
+        glow.material.opacity = 0.35 + Math.sin(Math.PI * lt) * 0.4;
+        glow.scale.setScalar(1 + Math.sin(Math.PI * lt) * 1.8);
         return;
       }
 
