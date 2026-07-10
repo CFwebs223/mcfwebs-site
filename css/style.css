@@ -59,6 +59,50 @@ body {
   overflow-x: hidden;
 }
 
+/* ==================== STORY MOOD (whole-page scroll wash) ==================== */
+/* See js/story-scroll.js. Sits behind everything, including the ambient
+   koi canvas (z-index -1/3), so it never competes with content. */
+#story-mood {
+  position: fixed;
+  inset: 0;
+  z-index: -2;
+  pointer-events: none;
+}
+
+/* ==================== STORY STROKE (scroll-revealed ink line) ==================== */
+/* See js/story-stroke.js. Hidden below 768px — there's no safe gutter
+   there to keep it clear of body text. */
+#story-stroke {
+  display: none;
+}
+
+@media (min-width: 768px) {
+  #story-stroke {
+    display: block;
+    position: absolute;
+    top: 0;
+    left: 15px;
+    z-index: -1;
+    pointer-events: none;
+  }
+
+  #story-stroke path {
+    fill: none;
+    stroke: var(--crimson);
+    stroke-linecap: round;
+  }
+
+  #story-stroke path:not(.story-stroke-glow-path) {
+    stroke-width: 4.5;
+    opacity: 0.9;
+  }
+
+  #story-stroke .story-stroke-glow-path {
+    stroke-width: 14;
+    opacity: 0.25;
+  }
+}
+
 img { display: block; max-width: 100%; height: auto; }
 a { color: inherit; text-decoration: none; }
 button { font-family: inherit; cursor: pointer; border: none; background: none; }

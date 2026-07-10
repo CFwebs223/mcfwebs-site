@@ -21,8 +21,21 @@ class KoiScene {
     // below all normal static content with zero enumeration needed.
     this.heroSection = document.querySelector('.hero');
     this.videoSection = document.querySelector('.scroll-video');
+    this.ctaSection = document.querySelector('.cta-section');
+    console.log('[koi-leap] ctaSection found:', !!this.ctaSection);
     this.canvasOpacity = 0;
     this.inFrontZone = true;
+
+    // Phase 3 "leap" moment: as the final CTA comes into view, one koi
+    // breaks from the ambient swim loop and arcs up across the screen —
+    // the koi-leaps-the-gate legend already implied by the site's own
+    // copy (Vision -> Growth), made visible once, right where the story
+    // lands. Retriggers each time the section re-enters view.
+    this.leapActive = false;
+    this.leapTriggered = false;
+    this.leapT = 0;
+    this.leapBurstFired = false;
+    this.leapKoiIndex = 0;
 
     this.ripples = [];
     this.rippleGeo = null;
@@ -367,15 +380,27 @@ class KoiScene {
     }
   }
 
-  _spawnRipple(x, y, scale) {
+  _spawnRipple(x, y, scale, color = 0xbfe6f2, opacity = 0.3) {
     const mesh = new THREE.Mesh(
       this.rippleGeo,
-      new THREE.MeshBasicMaterial({ color: 0xbfe6f2, transparent: true, opacity: 0.3, side: THREE.DoubleSide })
+      new THREE.MeshBasicMaterial({ color, transparent: true, opacity, side: THREE.DoubleSide })
     );
     mesh.position.set(x, y, -1);
     mesh.scale.setScalar(14 * scale);
     this.scene.add(mesh);
     this.ripples.push({ mesh, start: this.clock.elapsedTime, baseScale: 14 * scale });
+  }
+
+  // Warm gold/crimson burst at the leap's apex — the "breakthrough"
+  // beat — a few rings fired in quick succession rather than one, so it
+  // reads as a flash rather than a single ripple like the ambient ones.
+  _spawnLeapBurst(x, y, scale) {
+    [0, 0.12, 0.24].forEach((delay, i) => {
+      setTimeout(() => {
+        if (!this.scene) return;
+        this._spawnRipple(x, y, scale * (1 + i * 0.3), 0xf3c26a, 0.45);
+      }, delay * 1000);
+    });
   }
 
   _updateRipples(t) {
@@ -425,6 +450,19 @@ class KoiScene {
     this.camera.updateProjectionMatrix();
   }
 
+  // Screen-space point (relative to viewport center, matching the units
+  // the ambient swim path already uses) along the leap arc, lt in [0,1].
+  _leapPoint(lt) {
+    const startX = -this.viewW * 0.3;
+    const startY = -this.viewH * 0.36;
+    const endX = this.viewW * 0.26;
+    const endY = this.viewH * 0.32;
+    const x = startX + (endX - startX) * lt;
+    const arc = Math.sin(Math.PI * lt) * this.viewH * 0.34;
+    const y = startY + (endY - startY) * lt + arc;
+    return { x, y };
+  }
+
   _loop() {
     requestAnimationFrame(() => this._loop());
 
@@ -452,6 +490,23 @@ class KoiScene {
       this.canvas.style.zIndex = frontZone ? '3' : '-1';
     }
 
+    // Leap trigger: fires once per visit to the CTA zone, and re-arms
+    // once the section scrolls out of view so it can play again if the
+    // visitor scrolls back up and down past it.
+    if (this.ctaSection) {
+      const ctaRect = this.ctaSection.getBoundingClientRect();
+      const ctaZone = ctaRect.top < this.viewH * 0.75 && ctaRect.bottom > this.viewH * 0.15;
+      if (ctaZone && !this.leapTriggered) {
+        console.log('[koi-leap] triggered');
+        this.leapTriggered = true;
+        this.leapActive = true;
+        this.leapT = 0;
+        this.leapBurstFired = false;
+      } else if (!ctaZone) {
+        this.leapTriggered = false;
+      }
+    }
+
     this.canvasOpacity += (targetOpacity - this.canvasOpacity) * Math.min(1, dt * 4);
     this.canvas.style.opacity = this.canvasOpacity.toFixed(3);
     if (this.canvasOpacity < 0.01) {
@@ -473,7 +528,41 @@ class KoiScene {
     const responsiveScale = this.viewW < 700 ? 0.62 : 1;
     const ampScale = this.prefersReducedMotion ? 0.25 : 1;
 
-    this.koi.forEach((k) => {
+    // Advance the leap, if one is playing, once per frame (not per-koi).
+    if (this.leapActive) {
+      const leapSpeed = this.prefersReducedMotion ? 0.55 : 0.42;
+      this.leapT += dt * leapSpeed;
+      if (!this.leapBurstFired && this.leapT >= 0.5) {
+        this.leapBurstFired = true;
+        const apex = this._leapPoint(0.5);
+        this._spawnLeapBurst(apex.x, apex.y, responsiveScale * 1.4);
+      }
+      if (this.leapT >= 1) {
+        this.leapActive = false;
+      }
+    }
+
+    this.koi.forEach((k, idx) => {
+      const isLeaping = this.leapActive && idx === this.leapKoiIndex;
+
+      if (isLeaping) {
+        const lt = Math.min(1, this.leapT);
+        const ahead = Math.min(1, lt + 0.02);
+        const p = this._leapPoint(lt);
+        const pAhead = this._leapPoint(ahead);
+
+        k.mesh.position.set(p.x, p.y, 0);
+        const leapScale = 85 * responsiveScale * (1 + Math.sin(Math.PI * lt) * 0.2);
+        k.mesh.scale.setScalar(leapScale);
+        k.mesh.rotation.z = Math.atan2(pAhead.y - p.y, pAhead.x - p.x);
+
+        this._updateBodyWave(k.mesh, t * 1.8 + k.swimSeed, ampScale * 1.4);
+
+        const glow = k.mesh.userData.glow;
+        glow.material.opacity = 0.3 + Math.sin(Math.PI * lt) * 0.25;
+        return;
+      }
+
       const progress = (scrollCycles + this._idleOffset + k.phase) % 1;
       const ahead = (progress + 0.01) % 1;
 
