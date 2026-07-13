@@ -48,7 +48,10 @@ class Handler(http.server.SimpleHTTPRequestHandler):
     def log_message(self, fmt, *a):
         print(fmt % a)
 
-with socketserver.TCPServer(("127.0.0.1", PORT), Handler) as httpd:
-    httpd.allow_reuse_address = True
+class ThreadingHTTPServer(socketserver.ThreadingMixIn, socketserver.TCPServer):
+    daemon_threads = True
+    allow_reuse_address = True
+
+with ThreadingHTTPServer(("127.0.0.1", PORT), Handler) as httpd:
     print(f"MCFWebs at http://127.0.0.1:{PORT}")
     httpd.serve_forever()

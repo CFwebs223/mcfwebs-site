@@ -38,9 +38,15 @@
   <link rel="preload" as="video" href="videos/hero-front-mobile.mp4" media="(max-width: 767px)">
   <link rel="preload" as="video" href="videos/hero-back-mobile.mp4" media="(max-width: 767px)">
 
-  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>⚫</text></svg>">
+  <link rel="icon" href="/favicon.ico" sizes="any">
+  <link rel="icon" type="image/png" sizes="32x32" href="images/favicon-32.png">
+  <link rel="icon" type="image/png" sizes="16x16" href="images/favicon-16.png">
+  <link rel="apple-touch-icon" sizes="180x180" href="images/apple-touch-icon.png">
+  <link rel="icon" type="image/png" sizes="192x192" href="images/icon-192.png">
+  <link rel="icon" type="image/png" sizes="512x512" href="images/icon-512.png">
   <link rel="stylesheet" href="css/style.css">
   <link rel="stylesheet" href="css/hero.css">
+  <link rel="stylesheet" href="css/pricing.css">
 
   <!-- Structured Data -->
   <script type="application/ld+json">
@@ -63,6 +69,15 @@
 </head>
 <body>
 
+  <!-- Promo Banner — visible only before scrolling starts -->
+  <div class="promo-banner" id="promo-banner">
+    <a href="pricing.html" class="promo-banner-link">
+      <span class="promo-banner-dot" aria-hidden="true"></span>
+      Special launch pricing on new websites — see packages
+      <span class="promo-banner-arrow" aria-hidden="true">→</span>
+    </a>
+  </div>
+
   <!-- Loading Screen -->
   <div class="loading-screen" aria-hidden="true">
     <span class="loading-text">Loading</span>
@@ -84,6 +99,7 @@
     <a href="#work" class="mobile-nav-link">Work</a>
     <a href="#capabilities" class="mobile-nav-link">Capabilities</a>
     <a href="pricing.html" class="mobile-nav-link">Pricing</a>
+    <a href="pricing.html#platforms" class="mobile-nav-link" style="opacity:1;">Platforms</a>
     <a href="#process" class="mobile-nav-link">Process</a>
     <a href="#results" class="mobile-nav-link">Results</a>
     <a href="#contact" class="mobile-nav-link" style="opacity:1;">Contact</a>
@@ -91,11 +107,12 @@
 
   <!-- Navigation -->
   <nav class="nav" role="navigation" aria-label="Main navigation">
-    <a href="#" class="nav-logo">MCFWebs</a>
+    <a href="#" class="nav-logo"><img src="images/logo-mcfwebs.png" alt="MCFWebs" width="217" height="72"></a>
     <div class="nav-links">
       <a href="#work" class="nav-link">Work</a>
       <a href="#capabilities" class="nav-link">Capabilities</a>
       <a href="pricing.html" class="nav-link">Pricing</a>
+      <a href="pricing.html#platforms" class="nav-link">Platforms</a>
       <a href="#process" class="nav-link">Process</a>
       <a href="#results" class="nav-link">Results</a>
     </div>
@@ -172,140 +189,138 @@
   </section>
 
   <!-- ==================== FEATURED WORK ==================== -->
-  <section class="section-work container" id="work" aria-label="What We Build">
-    <div class="work-intro">
-      <div>
-        <div class="work-intro-label section-label label-caps reveal">What We Build</div>
-        <h2 class="display-md reveal reveal-delay-1">
-          Real Capabilities,<br>
-          <span style="font-style: italic; font-weight: 500;">Not Case Studies</span>
-        </h2>
-      </div>
-      <div>
-        <p class="work-intro-text body-lg reveal reveal-delay-2" style="color: var(--ink-light);">
-          Rather than invented client names, here's what MCFWebs actually builds —
-          including a live example running right in the card below.
-        </p>
-      </div>
-    </div>
+  <section class="section-work" id="work" aria-label="What We Build">
+    <h2 class="visually-hidden">What We Build</h2>
+    <canvas id="flow-field-canvas" aria-hidden="true"></canvas>
 
-    <div class="capability-grid">
-      <div class="capability-card reveal" data-tilt>
-        <div class="capability-card-inner">
-          <div class="capability-visual capability-visual-website" aria-hidden="true">
-            <div class="mock-browser">
-              <div class="mock-browser-bar"><span></span><span></span><span></span></div>
-              <div class="mock-browser-body">
-                <div class="mock-line mock-line-lg"></div>
-                <div class="mock-line mock-line-sm"></div>
-                <div class="mock-line mock-line-sm mock-line-short"></div>
-              </div>
-            </div>
-          </div>
-          <h3 class="capability-card-title">Custom Website Design</h3>
-          <p class="capability-card-desc body-md">Hand-built, mobile-first sites designed around your business — not a template.</p>
-          <a href="https://riptide-website.vercel.app" target="_blank" rel="noopener" class="capability-card-link label-caps">View live example <span aria-hidden="true">→</span></a>
+    <div class="work-shader-content container">
+      <div class="circular-badge reveal">
+        <div class="circular-badge-ring">
+          <svg viewBox="0 0 400 400" width="100%" height="100%">
+            <defs>
+              <path id="circular-badge-path" fill="none" d="M 200,200 m -160,0 a 160,160 0 1,1 320,0 a 160,160 0 1,1 -320,0" />
+            </defs>
+            <text>
+              <textPath href="#circular-badge-path" startOffset="0%">
+                <tspan>WEBSITES</tspan><tspan class="circular-badge-dot"> &#8226; </tspan><tspan>3D &amp; INTERACTIVE</tspan><tspan class="circular-badge-dot"> &#8226; </tspan><tspan>QR MENUS</tspan><tspan class="circular-badge-dot"> &#8226; </tspan><tspan>BOOKING</tspan><tspan class="circular-badge-dot"> &#8226; </tspan><tspan>DESIGN</tspan><tspan class="circular-badge-dot"> &#8226; </tspan>
+              </textPath>
+            </text>
+          </svg>
+        </div>
+        <div class="circular-badge-center" aria-hidden="true">
+          <div class="circular-badge-center-inner">MCFWebs</div>
         </div>
       </div>
 
-      <div class="capability-card reveal reveal-delay-1" data-tilt>
-        <div class="capability-card-inner">
-          <div class="capability-visual capability-visual-3d" aria-hidden="true">
-            <canvas id="capability-3d-canvas"></canvas>
-          </div>
-          <h3 class="capability-card-title">Interactive 3D / WebGL</h3>
-          <p class="capability-card-desc body-md">Scroll-driven 3D experiences — like the koi swimming through this very page.</p>
-          <a href="pricing.html" class="capability-card-link label-caps">Learn more <span aria-hidden="true">→</span></a>
+      <div class="shader-stats reveal reveal-delay-1">
+        <div class="shader-stat">
+          <span class="shader-stat-value" data-count-to="5" data-count-suffix="" data-count-duration="900">0</span>
+          <p class="shader-stat-label">Core Capabilities</p>
         </div>
-      </div>
-
-      <div class="capability-card reveal reveal-delay-2" data-tilt>
-        <div class="capability-card-inner">
-          <div class="capability-visual capability-visual-menu" aria-hidden="true">
-            <div class="mock-phone">
-              <div class="mock-qr">
-                <span></span><span></span><span></span><span></span>
-                <span></span><span></span><span></span><span></span>
-                <span></span>
-              </div>
-              <div class="mock-line mock-line-sm mock-line-short"></div>
-            </div>
-          </div>
-          <h3 class="capability-card-title">Digital &amp; QR Menus</h3>
-          <p class="capability-card-desc body-md">Instant, always-current menus customers scan and browse in seconds.</p>
-          <a href="https://demowebsite-three-brown.vercel.app" target="_blank" rel="noopener" class="capability-card-link label-caps">View live example <span aria-hidden="true">→</span></a>
+        <div class="shader-stat">
+          <span class="shader-stat-value" data-count-to="100" data-count-suffix="%" data-count-duration="1200">0%</span>
+          <p class="shader-stat-label">Hand-Coded, No Templates</p>
         </div>
-      </div>
-
-      <div class="capability-card reveal reveal-delay-3" data-tilt>
-        <div class="capability-card-inner">
-          <div class="capability-visual capability-visual-booking" aria-hidden="true">
-            <div class="mock-calendar">
-              <div class="mock-calendar-head">
-                <span class="mock-calendar-nav">‹</span>
-                <span class="mock-calendar-month">March</span>
-                <span class="mock-calendar-nav">›</span>
-              </div>
-              <div class="mock-calendar-dow">
-                <span>M</span><span>T</span><span>W</span><span>T</span><span>F</span><span>S</span><span>S</span>
-              </div>
-              <div class="mock-calendar-grid">
-                <span></span><span></span><span></span><span></span><span></span><span></span><span></span>
-                <span></span><span></span><span class="mock-calendar-selected">12</span><span></span><span></span><span></span><span></span>
-              </div>
-              <div class="mock-calendar-slots">
-                <span>09:00</span><span class="mock-slot-active">11:30</span><span>14:00</span>
-              </div>
-            </div>
-          </div>
-          <h3 class="capability-card-title">Booking Systems</h3>
-          <p class="capability-card-desc body-md">Let customers book online, any hour — no more missed calls or messages.</p>
-          <a href="pricing.html" class="capability-card-link label-caps">Learn more <span aria-hidden="true">→</span></a>
+        <div class="shader-stat">
+          <span class="shader-stat-value" data-count-to="24" data-count-suffix="/7" data-count-duration="1000">0/7</span>
+          <p class="shader-stat-label">Support After Launch</p>
         </div>
       </div>
     </div>
   </section>
 
-  <!-- ==================== CAPABILITIES ==================== -->
-  <section class="section" id="capabilities" aria-label="Capabilities">
-    <div class="container capabilities-grid">
-      <div>
-        <div class="section-label label-caps reveal">Capabilities</div>
-        <h2 class="capabilities-title display-md reveal reveal-delay-1">
-          Precision in<br>
-          <span style="font-style: italic; font-weight: 500;">every dimension</span>
+  <!-- ==================== LIVE DEMOS ====================
+       Replaces the old "Precision in Every Dimension" capability list
+       (read as generic/AI-written) with something checkable: a real,
+       live site you can click into, plus the actual design tokens this
+       site runs on — pulled straight from css/style.css, not invented
+       marketing language.
+
+       TODO: riptide-website-2yrhiv1ti-...vercel.app is currently behind
+       Vercel Deployment Protection (SSO login wall, X-Frame-Options:
+       DENY) — swap in the public URL below (both the iframe src and
+       the card's data-demo-url) once that's sorted, otherwise this
+       card's preview will render blank and the link will hit a Vercel
+       login page instead of the actual site. -->
+  <section class="section" id="capabilities" aria-label="Live demos and design system">
+    <div class="container">
+      <div style="margin-bottom: 60px;">
+        <div class="section-label label-caps reveal">Proof, Not Promises</div>
+        <h2 class="display-md reveal reveal-delay-1">
+          A Site You Can<br>
+          <span style="font-style: italic; font-weight: 500;">Actually Click Into</span>
         </h2>
-        <p class="capabilities-body body-lg reveal reveal-delay-2">
-          We translate complex vision into precise digital form through disciplined
-          craft and technical mastery.
+        <p class="body-lg reveal reveal-delay-2" style="max-width: 460px; color: var(--ink-light);">
+          Skip the mockups — here's a live build, running right now.
+          Hover it, then go poke around the real thing.
         </p>
       </div>
 
-      <div class="capabilities-list">
-        <div class="capability-item reveal-left reveal-delay-1">
-          <span class="capability-index">01</span>
-          <span class="capability-name">Custom Websites</span>
-          <span class="capability-arrow">→</span>
+      <div class="demo-grid">
+        <div class="demo-card reveal-scale" data-demo-url="https://riptide-website-2yrhiv1ti-feletchristopher-5905s-projects.vercel.app">
+          <div class="demo-card-frame">
+            <iframe src="https://riptide-website-2yrhiv1ti-feletchristopher-5905s-projects.vercel.app" loading="lazy" tabindex="-1" title="Riptide — live preview" aria-hidden="true"></iframe>
+            <div class="demo-card-frame-veil"></div>
+          </div>
+          <div class="demo-card-info">
+            <div>
+              <h3 class="demo-card-title">Riptide</h3>
+              <p class="demo-card-desc">Custom-built client site — live and click-through.</p>
+            </div>
+            <a class="demo-card-cta label-caps" href="https://riptide-website-2yrhiv1ti-feletchristopher-5905s-projects.vercel.app" target="_blank" rel="noopener">Visit site <span aria-hidden="true">→</span></a>
+          </div>
         </div>
-        <div class="capability-item reveal-left reveal-delay-2">
-          <span class="capability-index">02</span>
-          <span class="capability-name">3D Experiences</span>
-          <span class="capability-arrow">→</span>
+      </div>
+
+      <div class="design-systems">
+        <div style="margin-bottom: 40px;">
+          <div class="section-label label-caps reveal">The Design System</div>
+          <h3 class="headline-md reveal reveal-delay-1" style="margin-bottom: 12px;">What's actually under the hood</h3>
+          <p class="body-md reveal reveal-delay-2" style="max-width: 460px; color: var(--ink-light);">
+            These are the real tokens from this site's own stylesheet —
+            not stock icons or invented buzzwords.
+          </p>
         </div>
-        <div class="capability-item reveal-left reveal-delay-3">
-          <span class="capability-index">03</span>
-          <span class="capability-name">Interactive Development</span>
-          <span class="capability-arrow">→</span>
-        </div>
-        <div class="capability-item reveal-left reveal-delay-4">
-          <span class="capability-index">04</span>
-          <span class="capability-name">Design Systems</span>
-          <span class="capability-arrow">→</span>
-        </div>
-        <div class="capability-item reveal-left">
-          <span class="capability-index">05</span>
-          <span class="capability-name">Brand Experiences</span>
-          <span class="capability-arrow">→</span>
+
+        <div class="design-tokens-grid">
+          <div class="design-token-card reveal-scale">
+            <p class="design-token-label label-caps">Typography</p>
+            <p class="design-token-sample" style="font-family: var(--font-display); font-style: italic; font-size: 24px;">Playfair Display</p>
+            <p class="design-token-sample" style="font-family: var(--font-body); font-size: 14px;">Hanken Grotesk</p>
+            <p class="design-token-meta">Serif display, grotesk body — the exact pairing used on every headline and paragraph on this page.</p>
+          </div>
+
+          <div class="design-token-card reveal-scale reveal-delay-1">
+            <p class="design-token-label label-caps">Color Tokens</p>
+            <div class="design-token-swatches">
+              <span style="background:#fafafa;" title="--paper #fafafa"></span>
+              <span style="background:#1a1a1a;" title="--ink #1a1a1a"></span>
+              <span style="background:#bc002d;" title="--crimson #bc002d"></span>
+              <span style="background:#c4bfb8;" title="--stone #c4bfb8"></span>
+            </div>
+            <p class="design-token-meta">--paper #fafafa · --ink #1a1a1a · --crimson #bc002d · --stone #c4bfb8</p>
+          </div>
+
+          <div class="design-token-card reveal-scale reveal-delay-2">
+            <p class="design-token-label label-caps">Spacing Scale</p>
+            <div class="design-token-spacing" aria-hidden="true">
+              <span style="width: 8px;"></span>
+              <span style="width: 32px;"></span>
+              <span style="width: 80px;"></span>
+            </div>
+            <p class="design-token-meta">8px base unit → 32px gutter → 80px desktop margin. Everything on this page snaps to that grid.</p>
+          </div>
+
+          <div class="design-token-card reveal-scale reveal-delay-3">
+            <p class="design-token-label label-caps">Motion Curves</p>
+            <p class="design-token-sample" style="font-family: monospace; font-size: 13px;">cubic-bezier(.19, 1, .22, 1)</p>
+            <p class="design-token-meta">A custom eased curve, not the browser default — hand-tuned for every scroll reveal on this site.</p>
+          </div>
+
+          <div class="design-token-card reveal-scale reveal-delay-4">
+            <p class="design-token-label label-caps">Stack</p>
+            <p class="design-token-meta">Vanilla HTML/CSS/JS plus Three.js for the WebGL scenes. No React, no page builder, no template — every line hand-written.</p>
+          </div>
         </div>
       </div>
     </div>
@@ -320,11 +335,12 @@
           A process built<br>
           <span style="font-style: italic; font-weight: 500;">on rhythm</span>
         </h2>
-        <p class="body-lg reveal reveal-delay-2" style="max-width: 380px;">
-          Every project moves through the same disciplined arc — from
-          first idea to a product that ships, and keeps working after
-          launch.
-        </p>
+        <ul class="philosophy-list reveal reveal-delay-2" style="max-width: 400px;">
+          <li>We don't disappear once your site goes live — that's where most agencies stop.</li>
+          <li>Every project runs the same arc: idea, draft, build, launch.</li>
+          <li>We're still on WhatsApp answering questions six months later.</li>
+          <li>No handoffs, no account managers relaying messages — the people who build it are the people who answer for it.</li>
+        </ul>
       </div>
 
       <div class="layered-text" aria-hidden="true">
@@ -488,39 +504,94 @@
 
       <div class="testimonial reveal">
         <blockquote class="testimonial-text headline-lg">
-          "MCFWebs doesn't just build sites; they construct digital galleries.
-          Their obsession with space and typography changed how our brand is
-          perceived globally."
+          "I don't build sites to fill a portfolio — I build them because a
+          business that looks sharp online gets taken seriously offline.
+          Every project gets the same obsession over space and typography
+          I'd want for my own."
         </blockquote>
         <div class="testimonial-author">
           <div class="testimonial-line" aria-hidden="true"></div>
           <span class="label-caps" style="color: var(--ink-light);">
-            Sato Ishiguro, Creative Director
+            Christopher Felet, Founder — MCFWebs
           </span>
         </div>
       </div>
     </div>
   </section>
 
-  <!-- ==================== FINAL CTA / CONTACT ==================== -->
+  <!-- ==================== FINAL CTA / CONTACT ====================
+       Replaces the old plain email/phone links with a real enquiry
+       form (mirrors pricing.html's Formspree pattern).
+
+       SETUP NEEDED: this posts to a placeholder Formspree endpoint.
+       Log into (or create) Formspree, make a new form connected to
+       websitesmcf@gmail.com, then replace every "YOUR_FORM_ID" below
+       (the form action and the formspree('initForm', ...) call near
+       the bottom of this file) with the real form ID. -->
   <section class="cta-section container" id="contact" aria-label="Get in touch">
     <h2 class="cta-title display-xl reveal">
       Let's Create<br>
       <span class="cta-em">Something Unforgettable</span>
     </h2>
-    <div class="reveal reveal-delay-1" style="margin-bottom: 32px;">
-      <a href="pricing.html" class="cta-button"><span>Start Your Project</span></a>
-    </div>
-    <div class="reveal reveal-delay-2" style="display:flex;flex-direction:column;align-items:center;gap:8px;color:var(--ink-light);font-size:14px;">
-      <a href="mailto:feletchristopher@gmail.com" style="color:var(--ink);text-decoration:none;font-weight:500;">feletchristopher@gmail.com</a>
-      <a href="tel:+27781064098" style="color:var(--ink);text-decoration:none;font-weight:500;">078 106 4098</a>
-      <a href="https://wa.me/27781064098?text=Hi%20MCFWebs%2C%20I'd%20like%20to%20enquire%20about%20a%20website" target="_blank" rel="noopener" class="cta-button" style="margin-top:12px;padding:12px 36px;"><span>WhatsApp Enquiry</span></a>
+    <p class="reveal reveal-delay-1" style="text-align:center;color:var(--ink-light);max-width:480px;margin:0 auto 40px;">
+      Pick a package and tell us about your project — we'll reply within 24 hours.
+    </p>
+
+    <form class="pricing-form reveal reveal-delay-2" id="home-contact-form" action="https://formspree.io/f/YOUR_FORM_ID" method="POST" style="max-width:560px;margin:0 auto;text-align:left;">
+      <div data-fs-error="plan" style="color:var(--crimson);font-size:13px;text-align:center;"></div>
+
+      <div class="form-group">
+        <label for="home-plan">Select Plan</label>
+        <select id="home-plan" name="plan" required data-fs-field>
+          <option value="">— Choose your plan —</option>
+          <optgroup label="Websites">
+            <option value="digital-menu">Digital Menu — $349</option>
+            <option value="classic-site">Classic Site — $699</option>
+            <option value="3d-scroll">3D Scroll Experience — $1,999</option>
+          </optgroup>
+          <optgroup label="Platforms & Automation">
+            <option value="social-ads">Social Ads Starter — $597/mo</option>
+            <option value="search-growth">Search Growth — $797/mo</option>
+            <option value="full-funnel">Full Funnel — $1,297/mo</option>
+            <option value="whatsapp-automation">WhatsApp Automation — $449 + $149/mo</option>
+            <option value="workflow-automation">Workflow Automation — $599 + $99/mo</option>
+          </optgroup>
+          <option value="not-sure">Not sure yet</option>
+        </select>
+      </div>
+
+      <div class="form-group">
+        <label for="home-name">Your Name</label>
+        <input type="text" id="home-name" name="name" required placeholder="e.g. John Doe" data-fs-field>
+      </div>
+
+      <div class="form-group">
+        <label for="home-email">Email Address</label>
+        <input type="email" id="home-email" name="email" required placeholder="you@example.com" data-fs-field>
+      </div>
+
+      <div class="form-group">
+        <label for="home-phone">Phone Number</label>
+        <input type="tel" id="home-phone" name="phone" required placeholder="e.g. 078 106 4098" data-fs-field>
+      </div>
+
+      <div class="form-group">
+        <label for="home-message">Tell us about your project</label>
+        <textarea id="home-message" name="message" placeholder="Describe what you're looking for... any specific features, pages, or design preferences." data-fs-field></textarea>
+      </div>
+
+      <button type="submit" class="form-submit" data-fs-submit-btn>Send Enquiry</button>
+    </form>
+
+    <div class="form-success" data-fs-success style="max-width:560px;margin:0 auto;">
+      <p style="font-family:var(--font-display);font-size:28px;font-weight:600;color:var(--crimson);margin-bottom:12px;">Thank You</p>
+      <p>Your enquiry has been sent to MCFWebs. We'll respond within 24 hours.</p>
     </div>
   </section>
 
   <!-- ==================== FOOTER ==================== -->
   <footer class="footer container" role="contentinfo">
-    <div class="footer-logo">MCFWebs</div>
+    <div class="footer-logo"><img src="images/logo-mcfwebs.png" alt="MCFWebs" width="217" height="72"></div>
     <div class="footer-links">
       <a href="https://instagram.com/mcf_webs" target="_blank" rel="noopener" class="footer-link">Instagram</a>
       <a href="https://wa.me/27781064098?text=Hi%20MCFWebs%2C%20I'd%20like%20to%20enquire%20about%20a%20website" target="_blank" rel="noopener" class="footer-link">WhatsApp</a>
@@ -532,8 +603,31 @@
     </div>
   </footer>
 
+  <!-- WhatsApp Floating Button -->
+  <div class="whatsapp-fab-wrap" id="whatsapp-fab-wrap">
+    <div class="whatsapp-fab-menu" role="menu" aria-label="Choose a WhatsApp contact">
+      <a class="whatsapp-fab-menu-item" role="menuitem" target="_blank" rel="noopener"
+         href="https://wa.me/27781064098?text=Hi%20MCFWebs%2C%20call%20me%20now">
+        <span class="whatsapp-fab-menu-name">Felet</span>
+        <span class="whatsapp-fab-menu-number">078 106 4098</span>
+      </a>
+      <a class="whatsapp-fab-menu-item" role="menuitem" target="_blank" rel="noopener"
+         href="https://wa.me/27730150646?text=Hi%20MCFWebs%2C%20call%20me%20now">
+        <span class="whatsapp-fab-menu-name">MCFWebs</span>
+        <span class="whatsapp-fab-menu-number">073 015 0646</span>
+      </a>
+    </div>
+    <button type="button" class="whatsapp-fab" id="whatsapp-fab-toggle" aria-haspopup="true" aria-expanded="false">
+      <svg class="whatsapp-fab-icon" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+        <path d="M12.04 2C6.58 2 2.13 6.45 2.13 11.91c0 1.75.46 3.45 1.32 4.95L2.05 22l5.25-1.38a9.9 9.9 0 0 0 4.74 1.21h.01c5.46 0 9.91-4.45 9.91-9.91 0-2.65-1.03-5.14-2.9-7.01A9.82 9.82 0 0 0 12.04 2zm0 18.15h-.01a8.2 8.2 0 0 1-4.19-1.15l-.3-.18-3.12.82.83-3.04-.2-.31a8.22 8.22 0 0 1-1.26-4.38c0-4.54 3.7-8.24 8.25-8.24 2.2 0 4.27.86 5.83 2.42a8.2 8.2 0 0 1 2.41 5.83c0 4.55-3.7 8.24-8.24 8.24zm4.52-6.17c-.25-.12-1.47-.72-1.7-.81-.23-.08-.39-.12-.56.13-.16.24-.64.81-.78.97-.14.17-.29.19-.53.06-.25-.12-1.04-.38-1.99-1.22-.73-.66-1.23-1.46-1.37-1.71-.14-.24-.01-.38.11-.5.11-.11.25-.29.37-.43.13-.15.17-.25.25-.41.08-.17.04-.31-.02-.43-.06-.13-.56-1.35-.77-1.85-.2-.48-.41-.42-.56-.43-.14-.01-.31-.01-.47-.01-.17 0-.44.06-.67.31-.23.24-.87.86-.87 2.09 0 1.23.9 2.42 1.02 2.59.12.16 1.77 2.7 4.28 3.79.6.26 1.07.41 1.43.53.6.19 1.15.16 1.58.1.48-.07 1.47-.6 1.68-1.19.21-.58.21-1.08.14-1.19-.06-.11-.23-.17-.48-.29z"/>
+      </svg>
+      <span class="whatsapp-fab-label">Call Me Now</span>
+    </button>
+  </div>
+
   <script src="https://unpkg.com/three@0.160.0/build/three.min.js"></script>
   <script src="https://unpkg.com/lenis@1.1.18/dist/lenis.min.js"></script>
+  <script src="https://unpkg.com/@formspree/ajax@1" defer></script>
   <script src="js/smooth-scroll.js"></script>
   <script src="js/story-scroll.js"></script>
   <script src="js/story-stroke.js"></script>
@@ -542,6 +636,52 @@
   <script src="js/scroll-video.js"></script>
   <script src="js/scroll.js"></script>
   <script src="js/app.js"></script>
-  <script src="js/capability-cards.js"></script>
+  <script src="js/flow-field-background.js"></script>
+  <script>
+    // ---- Demo card click-through ----
+    // The frame veil catches clicks over the live-preview iframe (a
+    // cross-origin iframe otherwise swallows the click before it can
+    // bubble up), so the whole card opens the demo, not just the CTA link.
+    document.querySelectorAll('.demo-card').forEach(function (card) {
+      card.addEventListener('click', function (e) {
+        if (e.target.closest('a')) return;
+        var url = card.getAttribute('data-demo-url');
+        if (url) window.open(url, '_blank', 'noopener');
+      });
+    });
+
+    // ---- WhatsApp FAB popover ----
+    (function () {
+      var wrap = document.getElementById('whatsapp-fab-wrap');
+      var toggle = document.getElementById('whatsapp-fab-toggle');
+      if (!wrap || !toggle) return;
+
+      toggle.addEventListener('click', function () {
+        var isOpen = wrap.classList.toggle('open');
+        toggle.setAttribute('aria-expanded', String(isOpen));
+      });
+
+      document.addEventListener('click', function (e) {
+        if (!wrap.contains(e.target)) {
+          wrap.classList.remove('open');
+          toggle.setAttribute('aria-expanded', 'false');
+        }
+      });
+
+      document.addEventListener('keydown', function (e) {
+        if (e.key === 'Escape') {
+          wrap.classList.remove('open');
+          toggle.setAttribute('aria-expanded', 'false');
+        }
+      });
+    })();
+
+    // ---- Formspree Ajax init for the homepage enquiry form ----
+    // NOTE: replace 'YOUR_FORM_ID' (here and in the form's action=""
+    // above) once a Formspree endpoint pointed at websitesmcf@gmail.com
+    // exists.
+    window.formspree = window.formspree || function () { (formspree.q = formspree.q || []).push(arguments); };
+    formspree('initForm', { formElement: '#home-contact-form', formId: 'YOUR_FORM_ID' });
+  </script>
 </body>
 </html>

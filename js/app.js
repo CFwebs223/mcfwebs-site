@@ -104,6 +104,7 @@ class MCFWebs {
 
       // Nav state
       nav.classList.toggle('nav-scrolled', scrollY > 60);
+      document.body.classList.toggle('page-scrolled', scrollY > 1);
 
       // INSTANT transition: first scroll hides hero, shows video
       if (scrollY > 1 && !this.scrollStarted) {

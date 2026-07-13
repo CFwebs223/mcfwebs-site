@@ -56,6 +56,18 @@
   }
 }
 
+/* Two-card grids (e.g. Automation Systems) stay centered and don't
+   stretch to three columns' worth of width. */
+.pricing-grid-narrow {
+  max-width: 780px;
+}
+
+@media (min-width: 768px) {
+  .pricing-grid-narrow {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+
 .pricing-card {
   background: var(--paper-bright);
   border: 0.5px solid var(--border);

@@ -253,6 +253,7 @@ class KoiScene {
     );
     group.add(body);
 
+    group.userData.body = body;
     group.userData.bodyGeo = bodyGeo;
     group.userData.baseX = baseX;
     group.userData.baseW = baseW;
@@ -369,8 +370,28 @@ class KoiScene {
     tailPivot.rotation.z = tailDy * 2.2 + Math.sin(t * waveSpeed * 1.3) * 0.12 * ampScale;
   }
 
+  // Small 4-point sparkle/star shape (not a circle) for the leap's light
+  // trail — reads as "catching light" rather than the flat expanding
+  // rings used for ambient water ripples.
+  _buildSparkleGeo() {
+    const shape = new THREE.Shape();
+    const spike = 1, dip = 0.28;
+    for (let i = 0; i < 4; i++) {
+      const a1 = (i / 4) * Math.PI * 2;
+      const a2 = a1 + Math.PI / 4;
+      const p1 = [Math.cos(a1) * spike, Math.sin(a1) * spike];
+      const p2 = [Math.cos(a2) * dip, Math.sin(a2) * dip];
+      if (i === 0) shape.moveTo(p1[0], p1[1]); else shape.lineTo(p1[0], p1[1]);
+      shape.lineTo(p2[0], p2[1]);
+    }
+    shape.closePath();
+    return new THREE.ShapeGeometry(shape);
+  }
+
   _buildKoi() {
     this.rippleGeo = new THREE.RingGeometry(0.7, 1, 32);
+    this.sparkleGeo = this._buildSparkleGeo();
+    this.sparkles = [];
 
     const count = 3;
     this.koi = [];
@@ -398,16 +419,36 @@ class KoiScene {
     this.ripples.push({ mesh, start: this.clock.elapsedTime, baseScale: 14 * scale });
   }
 
-  // Warm gold/crimson burst at the leap's apex — the "breakthrough"
-  // beat — a few rings fired in quick succession rather than one, so it
-  // reads as a flash rather than a single ripple like the ambient ones.
-  _spawnLeapBurst(x, y, scale) {
-    [0, 0.1, 0.2, 0.32].forEach((delay, i) => {
-      setTimeout(() => {
-        if (!this.scene) return;
-        this._spawnRipple(x, y, scale * (1.8 + i * 0.6), 0xf3c26a, 0.65);
-      }, delay * 1000);
-    });
+  _spawnSparkle(x, y, scale, color) {
+    const mesh = new THREE.Mesh(
+      this.sparkleGeo,
+      new THREE.MeshBasicMaterial({ color, transparent: true, opacity: 0.9, side: THREE.DoubleSide })
+    );
+    mesh.position.set(x, y, 6);
+    mesh.rotation.z = Math.random() * Math.PI;
+    mesh.scale.setScalar(1);
+    this.scene.add(mesh);
+    this.sparkles.push({ mesh, start: this.clock.elapsedTime, baseScale: 9 * scale });
+  }
+
+  _updateSparkles(t) {
+    for (let i = this.sparkles.length - 1; i >= 0; i--) {
+      const s = this.sparkles[i];
+      const age = t - s.start;
+      const duration = 0.6;
+      if (age > duration) {
+        this.scene.remove(s.mesh);
+        s.mesh.material.dispose();
+        this.sparkles.splice(i, 1);
+        continue;
+      }
+      const p = age / duration;
+      // Quick pop in, gentle fade out — a flash of light, not a ripple.
+      const grow = p < 0.3 ? p / 0.3 : 1;
+      s.mesh.scale.setScalar(s.baseScale * grow * (1 - p * 0.3));
+      s.mesh.material.opacity = 0.9 * (1 - p);
+      s.mesh.rotation.z += 0.06;
+    }
   }
 
   _updateRipples(t) {
@@ -511,7 +552,8 @@ class KoiScene {
         this.leapTriggered = true;
         this.leapActive = true;
         this.leapT = 0;
-        this.leapBurstFired = false;
+        this.leapSparkleCheckpoints = [0.12, 0.3, 0.5, 0.7, 0.88];
+        this.leapSparklesFired = new Array(this.leapSparkleCheckpoints.length).fill(false);
       } else if (!ctaZone) {
         this.leapTriggered = false;
       }
@@ -541,14 +583,20 @@ class KoiScene {
     const ampScale = this.prefersReducedMotion ? 0.25 : 1;
 
     // Advance the leap, if one is playing, once per frame (not per-koi).
+    // Sparkles fire at several points along the arc (not just the apex),
+    // so it reads as a genuine light trail through the jump rather than
+    // one flash at a single spot.
     if (this.leapActive) {
       const leapSpeed = this.prefersReducedMotion ? 0.55 : 0.3;
       this.leapT += dt * leapSpeed;
-      if (!this.leapBurstFired && this.leapT >= 0.5) {
-        this.leapBurstFired = true;
-        const apex = this._leapPoint(0.5);
-        this._spawnLeapBurst(apex.x, apex.y, responsiveScale * 1.4);
-      }
+      this.leapSparkleCheckpoints.forEach((cp, i) => {
+        if (!this.leapSparklesFired[i] && this.leapT >= cp) {
+          this.leapSparklesFired[i] = true;
+          const pt = this._leapPoint(cp);
+          this._spawnSparkle(pt.x, pt.y, responsiveScale * 1.3, 0xf3c26a);
+          this._spawnSparkle(pt.x, pt.y, responsiveScale * 0.7, 0xffffff);
+        }
+      });
       if (this.leapT >= 1) {
         this.leapActive = false;
       }
@@ -573,13 +621,15 @@ class KoiScene {
 
         this._updateBodyWave(k.mesh, t * 1.8 + k.swimSeed, ampScale * 1.4);
 
-        // Warm gold halo (color swap, not just brighter blue) so the
-        // leaping koi is visually distinct from the ambient school, with
-        // its own glow scaling up dramatically at the apex.
-        const glow = k.mesh.userData.glow;
-        glow.material.color.setHex(0xf3c26a);
-        glow.material.opacity = 0.35 + Math.sin(Math.PI * lt) * 0.4;
-        glow.scale.setScalar(1 + Math.sin(Math.PI * lt) * 1.8);
+        // The koi's own body catches warm gold light as it leaps — a
+        // color multiply on the material, not a flat shape drawn behind
+        // it, so the fish itself looks lit rather than spotlit. The flat
+        // water-glow disc (which reads as a static circle/halo) is
+        // hidden entirely during the leap; the sparkle trail carries the
+        // light-catching moment instead.
+        const flash = Math.sin(Math.PI * lt);
+        k.mesh.userData.body.material.color.setRGB(1, 1 - flash * 0.32, 1 - flash * 0.62);
+        k.mesh.userData.glow.material.opacity = 0;
         return;
       }
 
@@ -606,8 +656,12 @@ class KoiScene {
       this._updateBodyWave(k.mesh, t + k.swimSeed, ampScale);
 
       // Gentle glow pulse — a soft cue that the koi is displacing water.
+      // Also guarantees the gold leap-tint always resets back to true
+      // white once a koi returns to its ambient swim, regardless of
+      // exactly which frame the leap finished on.
       const glow = k.mesh.userData.glow;
       glow.material.opacity = 0.13 + Math.sin(t * 0.7 + k.bobSeed) * 0.04;
+      k.mesh.userData.body.material.color.setRGB(1, 1, 1);
 
       // Periodic ripple ring expanding outward from the koi's position.
       if (t > k.nextRipple) {
@@ -617,6 +671,7 @@ class KoiScene {
     });
 
     this._updateRipples(t);
+    this._updateSparkles(t);
     this.renderer.render(this.scene, this.camera);
   }
 }
